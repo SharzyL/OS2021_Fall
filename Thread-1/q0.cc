@@ -9,10 +9,11 @@
 #include "lib/model.h" 
 #include "lib/embedding.h" 
 #include "lib/instruction.h"
+#include "lib/operation.h"
 
 namespace proj1 {
 
-void run_one_instruction(Instruction inst, EmbeddingHolder* users, EmbeddingHolder* items) {
+void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, const EmbeddingHolder &items) {
     switch(inst.order) {
         case INIT_EMB: {
             // read items[item_idx...], write a new user
@@ -67,23 +68,25 @@ void run_one_instruction(Instruction inst, EmbeddingHolder* users, EmbeddingHold
     }
 
 }
+
 } // namespace proj1
 
 int main(int argc, char *argv[]) {
-    auto* users = new proj1::EmbeddingHolder("data/q0.in");
-    auto* items = new proj1::EmbeddingHolder("data/q0.in");
+    auto users = proj1::EmbeddingHolder("data/q0.in");
+    auto items = proj1::EmbeddingHolder("data/q0.in");
     proj1::Instructions instructions = proj1::read_instructrions("data/q0_instruction.tsv");
+
     {
-    proj1::AutoTimer timer("q0");  // using this to print out timing of the block
-    // Run all the instructions
-    for (const proj1::Instruction& inst: instructions) {
-        proj1::run_one_instruction(inst, users, items);
-    }
+        proj1::AutoTimer timer("q0");  // using this to print out timing of the block
+        // Run all the instructions
+        for (const proj1::Instruction& inst: instructions) {
+            proj1::run_one_instruction(inst, users, items);
+        }
     }
 
     // Write the result
-    users->write_to_stdout();
-    items->write_to_stdout();
+    users.write_to_stdout();
+    items.write_to_stdout();
 
     // We only need to delete the embedding holders, as the pointers are all
     // pointing at the emb_matx of the holders.
