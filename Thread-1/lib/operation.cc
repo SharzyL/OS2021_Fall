@@ -38,13 +38,15 @@ void op_init_emb(EmbeddingHolder &users, const EmbeddingHolder &items, const Pay
     users.update_embedding(user_idx, &g_sum, 0.01);
 }
 
-void op_update_emb(EmbeddingHolder &users, const EmbeddingHolder &items, int user_idx, int item_idx, int label) {
+void op_update_emb(EmbeddingHolder &users, EmbeddingHolder &items, int user_idx, int item_idx, int label) {
     // read items[item_idx], users[user_idx]
     // write users[user_idx]
     Embedding* user = users.get_embedding(user_idx);
     Embedding* item = items.get_embedding(item_idx);
-    EmbeddingGradient* gradient = calc_gradient(user, item, label);
-    users.update_embedding(user_idx, gradient, 0.01);
+    EmbeddingGradient* user_gradient = calc_gradient(user, item, label);
+    users.update_embedding(user_idx, user_gradient, 0.01);
+    EmbeddingGradient* item_gradient = calc_gradient(item, user, label);
+    items.update_embedding(item_idx, item_gradient, 0.001);
 }
 
 Embedding* op_recommend(const EmbeddingHolder &users, const EmbeddingHolder &items, const PayloadType &payload) {
@@ -61,6 +63,10 @@ Embedding* op_recommend(const EmbeddingHolder &users, const EmbeddingHolder &ite
 }
 
 void work(EmbeddingHolder &users, EmbeddingHolder &items, const Instructions &instructions) {
+    // TODO: item update atomicity
+    // TODO: recommend output atomicity
+    // TODO: update item as fast as possible
+
     std::vector<std::unique_ptr<std::shared_mutex>> lock_list;
     std::vector<std::thread> jobs_list;
     std::vector<std::thread> update_jobs_list;
