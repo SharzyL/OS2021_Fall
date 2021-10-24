@@ -13,6 +13,20 @@
 
 namespace proj1 {
 
+class WorkerForTest : public Worker {
+public:
+    WorkerForTest(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &instructions, std::vector<Embedding> *recommendations)
+            : Worker(users, items, instructions), recommendations(recommendations)
+    {
+    }
+
+    void outputRecommendation(Embedding *recommendation) {
+        std::unique_lock<std::mutex> print_guard(printer_lock);
+        recommendation->write_to_stdout();
+    }
+    std::vector<Embedding> *recommendations;
+};
+
 void run_one_instruction(Instruction inst, EmbeddingHolder *users, EmbeddingHolder *items) {
     switch (inst.order) {
         case INIT_EMB: {
@@ -74,17 +88,17 @@ public:
 };
 
 InitData::InitData():
-    users1("data/q1.in"),
-    users2("data/q1.in"),
-    items1("data/q1.in"),
-    items2("data/q1.in"),
-    my_users("data/q1.in"),
-    my_items("data/q1.in")
+        users1("data/q1.in"),
+        users2("data/q1.in"),
+        items1("data/q1.in"),
+        items2("data/q1.in"),
+        my_users("data/q1.in"),
+        my_items("data/q1.in")
 {
 
 }
 
-TEST(testinit, threadsafe) {
+TEST(TestInit, ThreadSafe) {
     InitData init_data;
     std::string insr_str1 = "0 0 1";
     std::string insr_str2 = "0 1";
@@ -102,9 +116,160 @@ TEST(testinit, threadsafe) {
     w.work();
 
     EXPECT_TRUE(
-init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
+            init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
+    );
+    EXPECT_TRUE(
+            init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
     );
 }
+
+TEST(TestUpdate, ThreadSafe1) {
+    InitData init_data;
+    std::string insr_str1 = "1 0 1 0";
+    std::string insr_str2 = "1 0 2 1";
+    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+
+    for (proj1::Instruction inst: instructions1) {
+        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
+    }
+    for (proj1::Instruction inst: instructions2) {
+        proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2);
+    }
+
+    proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
+    w.work();
+
+    EXPECT_TRUE(
+            init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
+    );
+    EXPECT_TRUE(
+            init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
+    );
+}
+
+TEST(TestUpdate, ThreadSafe2) {
+    InitData init_data;
+    std::string insr_str1 = "1 0 1 1 0";
+    std::string insr_str2 = "1 0 0 1 1";
+    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+
+    for (proj1::Instruction inst: instructions1) {
+        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
+    }
+    for (proj1::Instruction inst: instructions2) {
+        proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2);
+    }
+
+    proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
+    w.work();
+
+    EXPECT_TRUE(
+            init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
+    );
+    EXPECT_TRUE(
+            init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
+    );
+}
+
+TEST(TestUpdate, EpochCorrectness) {
+    InitData init_data;
+    std::string insr_str1 = "1 0 0 1 0";
+    std::string insr_str2 = "1 1 0 2 1";
+    std::string insr_str3 = "1 -1 0 2 1";
+    proj1::Instructions instructions1 = read_instructrions(insr_str3 + "\n" + insr_str1 + "\n" + insr_str2);
+
+    for (proj1::Instruction inst: instructions1) {
+        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
+    }
+
+    proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
+    w.work();
+
+    EXPECT_TRUE(
+            init_data.my_users == init_data.users1
+    );
+    EXPECT_TRUE(
+            init_data.my_items == init_data.items1
+    );
+}
+
+TEST(TestRecommend, ThreadSafe) {
+    InitData init_data;
+    std::string insr_str1 = "2 0 -1 1 2 3 4";
+    std::string insr_str2 = "2 0 -1 3 4 5 6";
+    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+
+    for (proj1::Instruction inst: instructions1) {
+        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
+    }
+    for (proj1::Instruction inst: instructions2) {
+        proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2);
+    }
+
+    proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
+    w.work();
+
+    EXPECT_TRUE(
+            init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
+    );
+    EXPECT_TRUE(
+            init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
+    );
+}
+
+TEST(TestRecommendAndInit, ThreadSafe) {
+    InitData init_data;
+    std::string insr_str1 = "2 0 -1 1 2 3 4";
+    std::string insr_str2 = "0 0 1 2 3";
+    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+
+    for (proj1::Instruction inst: instructions1) {
+        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
+    }
+    for (proj1::Instruction inst: instructions2) {
+        proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2);
+    }
+
+    proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
+    w.work();
+
+    EXPECT_TRUE(
+            init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
+    );
+    EXPECT_TRUE(
+            init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
+    );
+}
+
+TEST(TestUpdateAndInit, ThreadSafe) {
+    InitData init_data;
+    std::string insr_str1 = "1 0 0 1 0";
+    std::string insr_str2 = "0 0 1 2 3";
+    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+
+    for (proj1::Instruction inst: instructions1) {
+        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
+    }
+    for (proj1::Instruction inst: instructions2) {
+        proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2);
+    }
+
+    proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
+    w.work();
+
+    EXPECT_TRUE(
+            init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
+    );
+    EXPECT_TRUE(
+            init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
+    );
+}
+
 
 int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);
