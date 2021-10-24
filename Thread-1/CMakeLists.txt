@@ -28,3 +28,6 @@ foreach(target IN LISTS Targets)
     add_executable(${target} ${Lib} ${target}.cc)
     target_link_libraries(${target} fmt Threads::Threads glog::glog)
 endforeach()
+
+add_executable(operation_test ${Lib} test/operation_test.cc)
+target_link_libraries(operation_test fmt Threads::Threads gtest_main glog::glog)
