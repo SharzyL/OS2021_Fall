@@ -9,6 +9,8 @@
 #include <mutex>
 #include <shared_mutex>
 #include <thread>
+#include <map>
+#include <variant>
 
 #include "model.h"
 #include "embedding.h"
@@ -16,27 +18,47 @@
 
 namespace proj1 {
 
-using PayloadType = decltype(Instruction::payloads);
-
 class Worker {
 public:
     using unique_lock = std::unique_lock<std::shared_mutex>;
     using shared_lock = std::shared_lock<std::shared_mutex>;
     EmbeddingHolder &users;
     EmbeddingHolder &items;
+    Instructions &instructions;
 
-    Worker(EmbeddingHolder &users, EmbeddingHolder &items);
+    Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &instructions);
+    void work();
+
+private:
     void op_init_emb(int user_idx, const std::vector<int> &item_idx_list);
     void op_update_emb(int user_idx, int item_idx, int label);
     void op_recommend(int user_idx, const std::vector<int> &item_idx_list);
-    void wait_update_jobs();
-    void work(Instructions &instructions);
-private:
     std::vector<std::unique_ptr<std::shared_mutex>> user_locks_list;
     std::vector<std::unique_ptr<std::shared_mutex>> item_locks_list;
-    std::vector<std::thread> jobs_list;
-    std::vector<std::thread> update_jobs_list;
     std::mutex printer_lock;
+
+    struct InitTask {
+        int user_idx;
+        std::vector<int> item_idx_list;
+    };
+    struct UpdateTask {
+        int user_idx;
+        int item_idx;
+        int label;
+    };
+    struct RecommendTask {
+        int user_idx;
+        std::vector<int> item_idx_list;
+    };
+    using Task = std::variant<InitTask, UpdateTask, RecommendTask>;
+
+    std::vector<Task> normal_tasks;
+    std::map<int, std::vector<Task>> tasks_in_epoch;
+
+    std::vector<std::thread> jobs_list;
+    std::vector<std::thread> epoch_jobs_list;
+
+    void execute_task(const Task &t);
 };
 
 } // namespace proj

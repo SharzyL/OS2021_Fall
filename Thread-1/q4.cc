@@ -9,8 +9,8 @@ int main() {
     auto items = proj1::EmbeddingHolder("data/q4.in");
     proj1::Instructions instructions = proj1::read_instructrions("data/q4_instruction.tsv");
 
-    proj1::Worker w(users, items);
-    w.work(instructions);
+    proj1::Worker w(users, items, instructions);
+    w.work();
 
     users.write_to_stdout();
     items.write_to_stdout();

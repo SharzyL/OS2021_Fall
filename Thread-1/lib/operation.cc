@@ -12,21 +12,68 @@
 #include "glog/logging.h"
 #include "fmt/core.h"
 #include "fmt/ranges.h"
-#include <filesystem>
+
+// utility for std::visit
+template<class... Ts> struct overload : Ts... { using Ts::operator()...; };
+template<class... Ts> overload(Ts...) -> overload<Ts...>;
 
 namespace proj1 {
 
-Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items) : users(users), items(items) {
+Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &instructions)
+    : users(users), items(items), instructions(instructions) {
+    std::vector<Task> last_tasks;
+
+    // initialize locks for items
+    item_locks_list.reserve(items.get_n_embeddings());
+    for (int i = 0; i < items.get_n_embeddings(); i++) {
+        item_locks_list.emplace_back(new std::shared_mutex);
+    }
+
+    // initialize locks for users
     user_locks_list.reserve(users.get_n_embeddings());
     for (int i = 0; i < users.get_n_embeddings(); i++) {
         user_locks_list.emplace_back(new std::shared_mutex);
     }
-    for (int i = 0; i < items.get_n_embeddings(); i++) {
-        item_locks_list.emplace_back(new std::shared_mutex);
+
+    // parse instructions and allocate for epochs
+    int newest_user_idx = (int) users.get_n_embeddings();
+    for (const proj1::Instruction &inst: instructions) {
+        if (inst.order == INIT_EMB) {
+            user_locks_list.emplace_back(new std::shared_mutex);
+
+            std::vector<int> item_idx_list;
+            item_idx_list.reserve(inst.payloads.size() - 1);
+            for (auto item_idx : inst.payloads) {
+                item_idx_list.push_back(item_idx);
+            }
+            InitTask t{newest_user_idx, std::move(item_idx_list)};
+            normal_tasks.emplace_back(t);  // TODO: avoid copy here
+            newest_user_idx++;
+
+        } else if (inst.order == RECOMMEND) {
+            int user_idx = inst.payloads[0];
+            int epoch = inst.payloads[1] + 1;
+            std::vector<int> item_idx_list;
+            item_idx_list.reserve(inst.payloads.size() - 2);
+            for (int i = 2; i < inst.payloads.size(); i++) {
+                item_idx_list.push_back(inst.payloads[i]);
+            }
+            RecommendTask t{user_idx, std::move(item_idx_list)};
+            tasks_in_epoch[epoch].push_back(t);
+
+        } else if (inst.order == UPDATE_EMB) {
+            int user_idx = inst.payloads[0];
+            int item_idx = inst.payloads[1];
+            int label = inst.payloads[2];
+            int epoch = inst.payloads.size() > 3 ? inst.payloads[3] : -1;
+            UpdateTask t{user_idx, item_idx, label};
+            tasks_in_epoch[epoch + 1].push_back(t);
+        }
     }
 }
 
 void Worker::op_init_emb(int user_idx, const std::vector<int> &item_idx_list) {
+    LOG(INFO) << fmt::format("init user={} {}", user_idx, item_idx_list);
     unique_lock lock(*user_locks_list[user_idx]);
     for (auto item_idx : item_idx_list) {
         (*item_locks_list[item_idx]).lock_shared();
@@ -57,9 +104,11 @@ void Worker::op_init_emb(int user_idx, const std::vector<int> &item_idx_list) {
     for (auto iter = item_idx_list.rbegin(); iter != item_idx_list.rend(); iter++) {
         (*item_locks_list[*iter]).unlock_shared();
     }
+    LOG(INFO) << fmt::format("init user={} {} end", user_idx, item_idx_list);
 }
 
 void Worker::op_update_emb(int user_idx, int item_idx, int label) {
+    LOG(INFO) << fmt::format("update user={} item={} label={}", user_idx, item_idx, label);
     unique_lock user_lock(*user_locks_list[user_idx]);
     unique_lock item_lock(*item_locks_list[item_idx]);
 
@@ -69,9 +118,11 @@ void Worker::op_update_emb(int user_idx, int item_idx, int label) {
     users.update_embedding(user_idx, user_gradient, 0.01);  // write user
     EmbeddingGradient *item_gradient = calc_gradient(item, user, label);  // slow
     items.update_embedding(item_idx, item_gradient, 0.001);  // write item
+    LOG(INFO) << fmt::format("update user={} item={} label={} end", user_idx, item_idx, label);
 }
 
 void Worker::op_recommend(int user_idx, const std::vector<int> &item_idx_list) {
+    LOG(INFO) << fmt::format("recommend user={} {}", user_idx, item_idx_list);
     shared_lock user_lock(*user_locks_list[user_idx]);
     for (auto item_idx : item_idx_list) {
         (*item_locks_list[item_idx]).lock_shared();
@@ -91,78 +142,41 @@ void Worker::op_recommend(int user_idx, const std::vector<int> &item_idx_list) {
     for (auto iter = item_idx_list.rbegin(); iter != item_idx_list.rend(); iter++) {
         (*item_locks_list[*iter]).unlock_shared();
     }
+    LOG(INFO) << fmt::format("recommend user={} {} end", user_idx, item_idx_list);
 }
 
-void Worker::wait_update_jobs() {
-    for (auto &job: update_jobs_list) job.join();
-    update_jobs_list.clear();
+void Worker::execute_task(const Task &t) {
+    std::visit(overload{
+        [=](const InitTask &t) {
+            op_init_emb(t.user_idx, t.item_idx_list);
+        },
+        [=](const UpdateTask &t) {
+            op_update_emb(t.user_idx, t.item_idx, t.label);
+        },
+        [=](const RecommendTask &t) {
+            op_recommend(t.user_idx, t.item_idx_list);
+        },
+    }, t);
 }
 
-void Worker::work(Instructions &instructions) {
-    for (const proj1::Instruction &inst: instructions) {
-        if (inst.order == proj1::INIT_EMB) {
-            user_locks_list.emplace_back(new std::shared_mutex);
+void Worker::work() {
+    for (const auto &t : normal_tasks) {
+        jobs_list.emplace_back([=]{ execute_task(t); });
+    }
+    LOG(INFO) << "put all normal tasks";
+    for (const auto &[epoch, tasks] : tasks_in_epoch) {
+        for (const auto &t : tasks) {
+            epoch_jobs_list.emplace_back([=] { execute_task(t); });
         }
-    }
-
-    int newest_user_idx = (int) users.get_n_embeddings();
-    for (const proj1::Instruction &inst: instructions) {
-        if (inst.order == proj1::INIT_EMB) {
-            std::vector<int> item_idx_list;
-            item_idx_list.reserve(inst.payloads.size() - 1);
-            for (auto item_idx : inst.payloads) {
-                item_idx_list.push_back(item_idx);
-            }
-            jobs_list.emplace_back([=] {
-                LOG(INFO) << fmt::format("init {}", newest_user_idx);
-                op_init_emb(newest_user_idx, item_idx_list);
-                LOG(INFO) << fmt::format("init {} end", newest_user_idx);
-            });
-            newest_user_idx++;
+        LOG(INFO) << fmt::format("wait for epoch {}", epoch);
+        for (auto &j : epoch_jobs_list) {
+            j.join();
         }
+        epoch_jobs_list.clear();
+        LOG(INFO) << fmt::format("wait for epoch {} end", epoch);
     }
-
-    int cur_epoch = 0;
-    for (proj1::Instruction &inst: instructions) {
-        if (inst.order == proj1::UPDATE_EMB) {
-            int user_idx = inst.payloads[0];
-            int item_idx = inst.payloads[1];
-            int label = inst.payloads[2];
-
-            if (inst.payloads.size() > 3 && inst.payloads[3] > cur_epoch) {
-                LOG(INFO) << fmt::format("waiting for epoch {}", cur_epoch);
-                wait_update_jobs();
-                LOG(INFO) << fmt::format("waiting for epoch {} end", cur_epoch);
-                cur_epoch = inst.payloads[3];
-            }
-
-            update_jobs_list.emplace_back([=] {
-                LOG(INFO) << fmt::format("update {}", user_idx);
-                op_update_emb(user_idx, item_idx, label);
-                LOG(INFO) << fmt::format("update {} end", user_idx);
-            });
-
-        } else if (inst.order == proj1::RECOMMEND) {
-            int user_idx = inst.payloads[0];
-            std::vector<int> item_idx_list;
-            item_idx_list.reserve(inst.payloads.size() - 1);
-            for (int i = 1; i < inst.payloads.size(); i++) {
-                item_idx_list.push_back(inst.payloads[i]);
-            }
-
-            jobs_list.emplace_back([=] {
-                LOG(INFO) << fmt::format("recommend {}", user_idx);
-                op_recommend(user_idx, item_idx_list);
-                LOG(INFO) << fmt::format("recommend {} end", user_idx);
-            });
-        }
+    for (auto &j : jobs_list) {
+        j.join();
     }
-
-    for (auto &job: update_jobs_list) {
-        job.join();
-    }
-    for (auto &job: jobs_list) {
-        job.join();
-    }
-};
+}
 } // namespace proj1
