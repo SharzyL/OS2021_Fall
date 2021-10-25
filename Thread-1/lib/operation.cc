@@ -72,6 +72,11 @@ Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &ins
     }
 }
 
+void Worker::outputRecommendation(Embedding *recommendation) {
+    std::unique_lock<std::mutex> print_guard(printer_lock);
+    recommendation->write_to_stdout();
+}
+
 void Worker::op_init_emb(int user_idx, const std::vector<int> &item_idx_list) {
     LOG(INFO) << fmt::format("init user={} {}", user_idx, item_idx_list);
     unique_lock lock(*user_locks_list[user_idx]);
@@ -135,10 +140,7 @@ void Worker::op_recommend(int user_idx, const std::vector<int> &item_idx_list) {
         item_pool.push_back(items.get_embedding(item_idx));  // read item
     }
     Embedding *recommendation = recommend(user, item_pool);
-    {
-        std::unique_lock<std::mutex> print_guard(printer_lock);
-        recommendation->write_to_stdout();  // print
-    }
+    recommendation->write_to_stdout();  // print
     for (auto iter = item_idx_list.rbegin(); iter != item_idx_list.rend(); iter++) {
         (*item_locks_list[*iter]).unlock_shared();
     }

@@ -29,7 +29,8 @@ public:
     Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &instructions);
     void work();
 
-private:
+protected:
+    virtual void outputRecommendation(Embedding *recommendation);
     void op_init_emb(int user_idx, const std::vector<int> &item_idx_list);
     void op_update_emb(int user_idx, int item_idx, int label);
     void op_recommend(int user_idx, const std::vector<int> &item_idx_list);

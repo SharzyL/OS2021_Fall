@@ -13,6 +13,15 @@
 
 namespace proj1 {
 
+template <typename V>
+bool vec_equal(V v1, V v2) {
+    if (v1.size() != v2.size()) return false;
+    for (int i = 0; i < v1.size(); i++) {
+        if (v1[i] != v2[i]) return false;
+    }
+    return true;
+}
+
 class WorkerForTest : public Worker {
 public:
     WorkerForTest(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &instructions, std::vector<Embedding> *recommendations)
@@ -27,7 +36,7 @@ public:
     std::vector<Embedding> *recommendations;
 };
 
-void run_one_instruction(Instruction inst, EmbeddingHolder *users, EmbeddingHolder *items) {
+void run_one_instruction(Instruction inst, EmbeddingHolder *users, EmbeddingHolder *items, std::vector<Embedding>* recommendations=nullptr) {
     switch (inst.order) {
         case INIT_EMB: {
             // We need to init the embedding
@@ -70,7 +79,11 @@ void run_one_instruction(Instruction inst, EmbeddingHolder *users, EmbeddingHold
                 item_pool.push_back(items->get_embedding(item_idx));
             }
             Embedding *recommendation = recommend(user, item_pool);
-            recommendation->write_to_stdout();
+            if (recommendations != nullptr) {
+                recommendations->push_back(recommendation);
+            } else {
+                recommendation->write_to_stdout();
+            }
             break;
         }
     }
@@ -95,7 +108,6 @@ InitData::InitData():
         my_users("data/q1.in"),
         my_items("data/q1.in")
 {
-
 }
 
 TEST(TestInit, ThreadSafe) {
@@ -136,7 +148,7 @@ TEST(TestUpdate, ThreadSafe1) {
     for (proj1::Instruction inst: instructions2) {
         proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2);
     }
-
+    
     proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
     w.work();
 
@@ -195,25 +207,31 @@ TEST(TestUpdate, EpochCorrectness) {
     );
 }
 
-TEST(TestRecommend, ThreadSafe) {
+TEST(TestRecommend, ThreadSafeAndCorrectness) {
     InitData init_data;
     std::string insr_str1 = "2 0 -1 1 2 3 4";
     std::string insr_str2 = "2 0 -1 3 4 5 6";
     proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
     proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
 
+    std::vector<Embedding> recommend1;
+    std::vector<Embedding> recommend2;
     for (proj1::Instruction inst: instructions1) {
-        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
+        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1, &recommend1);
     }
     for (proj1::Instruction inst: instructions2) {
-        proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2);
+        proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2, &recommend2);
     }
-
-    proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
+    
+    std::vector<Embedding> my_recommend;
+    proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
     w.work();
 
     EXPECT_TRUE(
             init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
+    );
+    EXPECT_TRUE(
+            vec_equal(recommend1, my_recommend) || vec_equal(recommend2, my_recommend)
     );
     EXPECT_TRUE(
             init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
@@ -227,18 +245,25 @@ TEST(TestRecommendAndInit, ThreadSafe) {
     proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
     proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
 
+    std::vector<Embedding> recommend1;
+    std::vector<Embedding> recommend2;
     for (proj1::Instruction inst: instructions1) {
-        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
+        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1, &recommend1);
     }
     for (proj1::Instruction inst: instructions2) {
-        proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2);
+        proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2, &recommend2);
     }
-
-    proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
+    
+    std::vector<Embedding> my_recommend;
+    proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
     w.work();
+
 
     EXPECT_TRUE(
             init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
+    );
+    EXPECT_TRUE(
+            vec_equal(recommend1, my_recommend) || vec_equal(recommend2, my_recommend)
     );
     EXPECT_TRUE(
             init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
@@ -269,6 +294,69 @@ TEST(TestUpdateAndInit, ThreadSafe) {
             init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
     );
 }
+
+TEST(TestUpdateAndRecommend, ThreadSafe) {
+    InitData init_data;
+    std::string insr_str1 = "1 0 1 0";
+    std::string insr_str2 = "2 0 0 0 1 2";
+    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+    std::vector<Embedding> recommend1;
+    std::vector<Embedding> recommend2;
+    for (proj1::Instruction inst: instructions1) {
+        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1, &recommend1);
+    }
+    for (proj1::Instruction inst: instructions2) {
+        proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2, &recommend2);
+    }
+    
+    std::vector<Embedding> my_recommend;
+    proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
+    w.work();
+
+
+    EXPECT_TRUE(
+            init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
+    );
+    EXPECT_TRUE(
+            vec_equal(recommend1, my_recommend) || vec_equal(recommend2, my_recommend)
+    );
+    EXPECT_TRUE(
+            init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
+    );
+}
+
+TEST(TestRecommend, Epoch) {
+    InitData init_data;
+    std::string insr_str1 = "1 0 0 1 0";
+    std::string insr_str2 = "2 0 -1 0 1 2";
+    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+    std::vector<Embedding> recommend1;
+    std::vector<Embedding> recommend2;
+    for (proj1::Instruction inst: instructions1) {
+        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1, &recommend1);
+    }
+    for (proj1::Instruction inst: instructions2) {
+        proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2, &recommend2);
+    }
+    
+    std::vector<Embedding> my_recommend;
+    proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
+    w.work();
+
+
+    EXPECT_TRUE(
+            init_data.my_users == init_data.users2
+    );
+    EXPECT_TRUE(
+            vec_equal(recommend2, my_recommend)
+    );
+    EXPECT_TRUE(
+            init_data.my_items == init_data.items2
+    );
+}
+
 
 
 int main(int argc, char **argv) {

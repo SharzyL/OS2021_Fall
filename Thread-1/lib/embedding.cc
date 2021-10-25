@@ -142,6 +142,10 @@ bool Embedding::operator==(const Embedding &another) {
     return true;
 }
 
+bool Embedding::operator!=(const Embedding &other) {
+    return !(*this == other);
+}
+
 EmbeddingHolder::EmbeddingHolder(std::string filename) {
     this->emb_matx = this->read(filename);
 }

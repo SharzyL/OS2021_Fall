@@ -34,6 +34,7 @@ public:
     Embedding operator/(const Embedding&);
     Embedding operator/(const double);
     bool operator==(const Embedding&);
+    bool operator!=(const Embedding&);
 private:
     int length;
     double* data;
