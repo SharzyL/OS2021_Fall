@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
 
     proj1::EmbeddingHolder* users = new proj1::EmbeddingHolder("data/q0.in");
     proj1::EmbeddingHolder* items = new proj1::EmbeddingHolder("data/q0.in");
-    proj1::Instructions instructions = proj1::read_instructrions("data/q0_instruction.tsv");
+    proj1::Instructions instructions = proj1::read_instructions("data/q0_instruction.tsv");
     {
     proj1::AutoTimer timer("q0");  // using this to print out timing of the block
     // Run all the instructions

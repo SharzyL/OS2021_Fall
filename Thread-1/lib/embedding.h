@@ -45,6 +45,7 @@ using EmbeddingGradient = Embedding;
 
 class EmbeddingHolder{
 public:
+    EmbeddingHolder();
     EmbeddingHolder(std::string filename);
     EmbeddingHolder(EmbeddingMatrix &data);
     ~EmbeddingHolder();

@@ -9,7 +9,7 @@
 int main() {
     auto users = proj1::EmbeddingHolder("data/q1.in");
     auto items = proj1::EmbeddingHolder("data/q1.in");
-    proj1::Instructions instructions = proj1::read_instructrions("data/q1_instruction.tsv");
+    proj1::Instructions instructions = proj1::read_instructions("data/q1_instruction.tsv");
 
     proj1::Worker w(users, items, instructions);
     w.work();

@@ -13,30 +13,21 @@
 
 namespace proj1 {
 
-template <typename V>
-bool vec_equal(V v1, V v2) {
-    if (v1.size() != v2.size()) return false;
-    for (int i = 0; i < v1.size(); i++) {
-        if (v1[i] != v2[i]) return false;
-    }
-    return true;
-}
-
 class WorkerForTest : public Worker {
 public:
-    WorkerForTest(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &instructions, std::vector<Embedding> *recommendations)
+    WorkerForTest(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &instructions, EmbeddingHolder *recommendations)
             : Worker(users, items, instructions), recommendations(recommendations)
     {
     }
 
-    void outputRecommendation(Embedding *recommendation) {
+    void output_recommendation(Embedding *recommendation) {
         std::unique_lock<std::mutex> print_guard(printer_lock);
-        recommendation->write_to_stdout();
+        recommendations->append(recommendation);
     }
-    std::vector<Embedding> *recommendations;
+    EmbeddingHolder *recommendations;
 };
 
-void run_one_instruction(Instruction inst, EmbeddingHolder *users, EmbeddingHolder *items, std::vector<Embedding>* recommendations=nullptr) {
+void run_one_instruction(Instruction inst, EmbeddingHolder *users, EmbeddingHolder *items, EmbeddingHolder* recommendations=nullptr) {
     switch (inst.order) {
         case INIT_EMB: {
             // We need to init the embedding
@@ -80,7 +71,7 @@ void run_one_instruction(Instruction inst, EmbeddingHolder *users, EmbeddingHold
             }
             Embedding *recommendation = recommend(user, item_pool);
             if (recommendations != nullptr) {
-                recommendations->push_back(recommendation);
+                recommendations->append(recommendation);
             } else {
                 recommendation->write_to_stdout();
             }
@@ -91,7 +82,16 @@ void run_one_instruction(Instruction inst, EmbeddingHolder *users, EmbeddingHold
 
 class InitData {
 public:
-    InitData();
+    InitData():
+            users1("data/q1.in"),
+            users2("data/q1.in"),
+            items1("data/q1.in"),
+            items2("data/q1.in"),
+            my_users("data/q1.in"),
+            my_items("data/q1.in")
+    {
+    }
+
     EmbeddingHolder users1;
     EmbeddingHolder users2;
     EmbeddingHolder items1;
@@ -100,22 +100,12 @@ public:
     EmbeddingHolder my_items;
 };
 
-InitData::InitData():
-        users1("data/q1.in"),
-        users2("data/q1.in"),
-        items1("data/q1.in"),
-        items2("data/q1.in"),
-        my_users("data/q1.in"),
-        my_items("data/q1.in")
-{
-}
-
 TEST(TestInit, ThreadSafe) {
     InitData init_data;
     std::string insr_str1 = "0 0 1";
     std::string insr_str2 = "0 1";
-    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
 
     for (proj1::Instruction inst: instructions1) {
         proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
@@ -139,8 +129,8 @@ TEST(TestUpdate, ThreadSafe1) {
     InitData init_data;
     std::string insr_str1 = "1 0 1 0";
     std::string insr_str2 = "1 0 2 1";
-    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
 
     for (proj1::Instruction inst: instructions1) {
         proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
@@ -164,8 +154,8 @@ TEST(TestUpdate, ThreadSafe2) {
     InitData init_data;
     std::string insr_str1 = "1 0 1 1 0";
     std::string insr_str2 = "1 0 0 1 1";
-    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
 
     for (proj1::Instruction inst: instructions1) {
         proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
@@ -187,10 +177,10 @@ TEST(TestUpdate, ThreadSafe2) {
 
 TEST(TestUpdate, EpochCorrectness) {
     InitData init_data;
-    std::string insr_str1 = "1 0 0 1 0";
-    std::string insr_str2 = "1 1 0 2 1";
-    std::string insr_str3 = "1 -1 0 2 1";
-    proj1::Instructions instructions1 = read_instructrions(insr_str3 + "\n" + insr_str1 + "\n" + insr_str2);
+    std::string insr_str1 = "1 1 0 1 0";
+    std::string insr_str2 = "1 2 0 2 1";
+    std::string insr_str3 = "1 0 0 2 1";
+    proj1::Instructions instructions1 = read_instructions_from_str(insr_str3 + "\n" + insr_str1 + "\n" + insr_str2);
 
     for (proj1::Instruction inst: instructions1) {
         proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
@@ -211,11 +201,11 @@ TEST(TestRecommend, ThreadSafeAndCorrectness) {
     InitData init_data;
     std::string insr_str1 = "2 0 -1 1 2 3 4";
     std::string insr_str2 = "2 0 -1 3 4 5 6";
-    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
 
-    std::vector<Embedding> recommend1;
-    std::vector<Embedding> recommend2;
+    EmbeddingHolder recommend1;
+    EmbeddingHolder recommend2;
     for (proj1::Instruction inst: instructions1) {
         proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1, &recommend1);
     }
@@ -223,7 +213,7 @@ TEST(TestRecommend, ThreadSafeAndCorrectness) {
         proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2, &recommend2);
     }
     
-    std::vector<Embedding> my_recommend;
+    EmbeddingHolder my_recommend;
     proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
     w.work();
 
@@ -231,7 +221,7 @@ TEST(TestRecommend, ThreadSafeAndCorrectness) {
             init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
     );
     EXPECT_TRUE(
-            vec_equal(recommend1, my_recommend) || vec_equal(recommend2, my_recommend)
+            recommend1 == my_recommend || recommend2 == my_recommend
     );
     EXPECT_TRUE(
             init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
@@ -242,28 +232,27 @@ TEST(TestRecommendAndInit, ThreadSafe) {
     InitData init_data;
     std::string insr_str1 = "2 0 -1 1 2 3 4";
     std::string insr_str2 = "0 0 1 2 3";
-    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+    Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
+    Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
 
-    std::vector<Embedding> recommend1;
-    std::vector<Embedding> recommend2;
-    for (proj1::Instruction inst: instructions1) {
-        proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1, &recommend1);
+    EmbeddingHolder recommend1;
+    EmbeddingHolder recommend2;
+    for (const auto &inst: instructions1) {
+        run_one_instruction(inst, &init_data.users1, &init_data.items1, &recommend1);
     }
-    for (proj1::Instruction inst: instructions2) {
+    for (const auto &inst: instructions2) {
         proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2, &recommend2);
     }
     
-    std::vector<Embedding> my_recommend;
-    proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
+    EmbeddingHolder my_recommend;
+    WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
     w.work();
-
 
     EXPECT_TRUE(
             init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
     );
     EXPECT_TRUE(
-            vec_equal(recommend1, my_recommend) || vec_equal(recommend2, my_recommend)
+            my_recommend == recommend1 || my_recommend == recommend2
     );
     EXPECT_TRUE(
             init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
@@ -274,8 +263,8 @@ TEST(TestUpdateAndInit, ThreadSafe) {
     InitData init_data;
     std::string insr_str1 = "1 0 0 1 0";
     std::string insr_str2 = "0 0 1 2 3";
-    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
+    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
 
     for (proj1::Instruction inst: instructions1) {
         proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1);
@@ -299,10 +288,10 @@ TEST(TestUpdateAndRecommend, ThreadSafe) {
     InitData init_data;
     std::string insr_str1 = "1 0 1 0";
     std::string insr_str2 = "2 0 0 0 1 2";
-    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
-    std::vector<Embedding> recommend1;
-    std::vector<Embedding> recommend2;
+    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
+    EmbeddingHolder recommend1;
+    EmbeddingHolder recommend2;
     for (proj1::Instruction inst: instructions1) {
         proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1, &recommend1);
     }
@@ -310,16 +299,15 @@ TEST(TestUpdateAndRecommend, ThreadSafe) {
         proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2, &recommend2);
     }
     
-    std::vector<Embedding> my_recommend;
+    EmbeddingHolder my_recommend;
     proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
     w.work();
-
 
     EXPECT_TRUE(
             init_data.my_users == init_data.users1 || init_data.my_users == init_data.users2
     );
     EXPECT_TRUE(
-            vec_equal(recommend1, my_recommend) || vec_equal(recommend2, my_recommend)
+            my_recommend == recommend1 || my_recommend == recommend2
     );
     EXPECT_TRUE(
             init_data.my_items == init_data.items1 || init_data.my_items == init_data.items2
@@ -330,10 +318,10 @@ TEST(TestRecommend, Epoch) {
     InitData init_data;
     std::string insr_str1 = "1 0 0 1 0";
     std::string insr_str2 = "2 0 -1 0 1 2";
-    proj1::Instructions instructions1 = read_instructrions(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructrions(insr_str2 + "\n" + insr_str1);
-    std::vector<Embedding> recommend1;
-    std::vector<Embedding> recommend2;
+    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
+    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
+    EmbeddingHolder recommend1;
+    EmbeddingHolder recommend2;
     for (proj1::Instruction inst: instructions1) {
         proj1::run_one_instruction(inst, &init_data.users1, &init_data.items1, &recommend1);
     }
@@ -341,23 +329,20 @@ TEST(TestRecommend, Epoch) {
         proj1::run_one_instruction(inst, &init_data.users2, &init_data.items2, &recommend2);
     }
     
-    std::vector<Embedding> my_recommend;
+    EmbeddingHolder my_recommend;
     proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
     w.work();
-
 
     EXPECT_TRUE(
             init_data.my_users == init_data.users2
     );
     EXPECT_TRUE(
-            vec_equal(recommend2, my_recommend)
+            recommend2 == my_recommend
     );
     EXPECT_TRUE(
             init_data.my_items == init_data.items2
     );
 }
-
-
 
 int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);

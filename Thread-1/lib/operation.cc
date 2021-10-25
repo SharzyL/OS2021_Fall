@@ -36,19 +36,19 @@ Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &ins
     }
 
     // parse instructions and allocate for epochs
-    int newest_user_idx = (int) users.get_n_embeddings();
     for (const proj1::Instruction &inst: instructions) {
         if (inst.order == INIT_EMB) {
             user_locks_list.emplace_back(new std::shared_mutex);
+
+            int new_user_idx = users.append(new Embedding(users.get_emb_length()));  // append user
 
             std::vector<int> item_idx_list;
             item_idx_list.reserve(inst.payloads.size() - 1);
             for (auto item_idx : inst.payloads) {
                 item_idx_list.push_back(item_idx);
             }
-            InitTask t{newest_user_idx, std::move(item_idx_list)};
+            InitTask t{new_user_idx, std::move(item_idx_list)};
             normal_tasks.emplace_back(t);  // TODO: avoid copy here
-            newest_user_idx++;
 
         } else if (inst.order == RECOMMEND) {
             int user_idx = inst.payloads[0];
@@ -72,7 +72,7 @@ Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &ins
     }
 }
 
-void Worker::outputRecommendation(Embedding *recommendation) {
+void Worker::output_recommendation(Embedding *recommendation) {
     std::unique_lock<std::mutex> print_guard(printer_lock);
     recommendation->write_to_stdout();
 }
@@ -84,27 +84,12 @@ void Worker::op_init_emb(int user_idx, const std::vector<int> &item_idx_list) {
         (*item_locks_list[item_idx]).lock_shared();
     }
 
-    auto *new_user = new Embedding(users.get_emb_length());
-    users.append(new_user);  // append user
-
-    std::vector<std::thread> jobs;
-    EmbeddingGradient g_sum(users.get_emb_length());
-    std::mutex gradient_write_lock;
-
-    jobs.reserve(item_idx_list.size());
+    Embedding *user_emb = users.get_embedding(user_idx);
     for (int item_index: item_idx_list) {
-        jobs.emplace_back([&, item_index]() {
-            Embedding *item_emb = items.get_embedding(item_index);  // read item
-            EmbeddingGradient *gradient = cold_start(new_user, item_emb);  // slow
-            {
-                std::unique_lock lock(gradient_write_lock);
-                g_sum = g_sum + gradient;
-            }
-        });
+        Embedding *item_emb = items.get_embedding(item_index);  // read item
+        EmbeddingGradient *gradient = cold_start(user_emb, item_emb);  // slow
+        users.update_embedding(user_idx, gradient, 0.01);
     }
-
-    for (auto &job: jobs) job.join();
-    users.update_embedding(user_idx, &g_sum, 0.01);  // slow, write user
 
     for (auto iter = item_idx_list.rbegin(); iter != item_idx_list.rend(); iter++) {
         (*item_locks_list[*iter]).unlock_shared();
@@ -140,7 +125,7 @@ void Worker::op_recommend(int user_idx, const std::vector<int> &item_idx_list) {
         item_pool.push_back(items.get_embedding(item_idx));  // read item
     }
     Embedding *recommendation = recommend(user, item_pool);
-    recommendation->write_to_stdout();  // print
+    output_recommendation(recommendation);
     for (auto iter = item_idx_list.rbegin(); iter != item_idx_list.rend(); iter++) {
         (*item_locks_list[*iter]).unlock_shared();
     }
