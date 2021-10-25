@@ -59,7 +59,7 @@ Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &ins
                 item_idx_list.push_back(inst.payloads[i]);
             }
             RecommendTask t{user_idx, std::move(item_idx_list)};
-            tasks_in_epoch[epoch].push_back(t);
+            tasks_in_epoch[epoch + 1].push_back(t);
 
         } else if (inst.order == UPDATE_EMB) {
             int user_idx = inst.payloads[0];
@@ -67,7 +67,7 @@ Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &ins
             int label = inst.payloads[2];
             int epoch = inst.payloads.size() > 3 ? inst.payloads[3] : -1;
             UpdateTask t{user_idx, item_idx, label};
-            tasks_in_epoch[epoch + 1].push_back(t);
+            tasks_in_epoch[epoch].push_back(t);
         }
     }
 }
@@ -152,6 +152,7 @@ void Worker::work() {
     }
     LOG(INFO) << "put all normal tasks";
     for (const auto &[epoch, tasks] : tasks_in_epoch) {
+        LOG(INFO) << fmt::format("push task in epoch {}", epoch);
         for (const auto &t : tasks) {
             epoch_jobs_list.emplace_back([=] { execute_task(t); });
         }
