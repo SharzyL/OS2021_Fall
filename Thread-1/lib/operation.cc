@@ -119,10 +119,10 @@ void Worker::op_recommend(int user_idx, const std::vector<int> &item_idx_list) {
     }
 
     Embedding &user = users[user_idx];  // read user
-    std::vector<Embedding> item_pool;
+    std::vector<std::reference_wrapper<Embedding>> item_pool;
     item_pool.reserve(item_idx_list.size());
     for (auto item_idx : item_idx_list) {
-        item_pool.push_back(items[item_idx]);  // read item
+        item_pool.emplace_back(items[item_idx]);  // read item
     }
     const Embedding &recommendation = recommend(user, item_pool);
     output_recommendation(recommendation);

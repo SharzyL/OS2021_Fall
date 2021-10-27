@@ -52,6 +52,7 @@ public:
     void write_to_stdout();
     void write(const std::string& filename);
     int append(const Embedding &embedding);
+    int append(Embedding &&embedding);
     void update_embedding(int, const EmbeddingGradient &, double);
     unsigned int get_n_embeddings();
     int get_emb_length();

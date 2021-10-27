@@ -42,7 +42,7 @@ EmbeddingGradient cold_start(const Embedding &user, const Embedding &item) {
     return calc_gradient(user, item, label);
 }
 
-const Embedding& recommend(const Embedding &user, const std::vector<Embedding>& items) {
+const Embedding& recommend(const Embedding &user, const std::vector<std::reference_wrapper<Embedding>>& items) {
     assert(!items.empty());
     double sim, maxSim = -std::numeric_limits<double>::max();
     int max_item_idx;

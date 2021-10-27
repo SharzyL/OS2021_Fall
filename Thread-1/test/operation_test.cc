@@ -21,7 +21,7 @@ public:
 
     void output_recommendation(const Embedding &recommendation) override {
         std::unique_lock<std::mutex> print_guard(printer_lock);
-        recommendations->append(recommendation);
+        recommendations->append(std::move(recommendation));  // TODO: copy happens here
     }
     EmbeddingHolder *recommendations;
 };
@@ -31,8 +31,8 @@ void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, Embedd
         case INIT_EMB: {
             // We need to init the embedding
             int length = users.get_emb_length();
-            Embedding new_user(length);
-            int user_idx = users.append(new_user);
+            int user_idx = users.append(Embedding(length));
+            Embedding& new_user = users[user_idx];
             for (int item_index: inst.payloads) {
                 Embedding &item_emb = items[item_index];
                 // Call cold start for downstream applications, slow
@@ -56,12 +56,12 @@ void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, Embedd
         case RECOMMEND: {
             int user_idx = inst.payloads[0];
             Embedding &user = users[user_idx];
-            std::vector<Embedding> item_pool;
+            std::vector<std::reference_wrapper<Embedding>> item_pool;
             for (unsigned int i = 2; i < inst.payloads.size(); ++i) {
                 int item_idx = inst.payloads[i];
                 item_pool.push_back(items[item_idx]);
             }
-            Embedding recommendation = recommend(user, item_pool);
+            const Embedding &recommendation = recommend(user, item_pool);
             if (recommendations != nullptr) {
                 recommendations->append(recommendation);
             } else {

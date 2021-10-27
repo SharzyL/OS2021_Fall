@@ -172,8 +172,7 @@ EmbeddingMatrix EmbeddingHolder::read(const std::string& filename) {
                 }
                 ++length;
             }
-            Embedding emb(length, line);
-            matrix.push_back(emb);
+            matrix.emplace_back(length, line);
         }
         ifs.close();
     } else {
@@ -185,6 +184,12 @@ EmbeddingMatrix EmbeddingHolder::read(const std::string& filename) {
 int EmbeddingHolder::append(const Embedding &data) {
     size_t idx = this->emb_matx.size();
     this->emb_matx.emplace_back(data);
+    return (int) idx;
+}
+
+int EmbeddingHolder::append(Embedding &&data) {
+    size_t idx = this->emb_matx.size();
+    this->emb_matx.emplace_back(std::move(data));
     return (int) idx;
 }
 
