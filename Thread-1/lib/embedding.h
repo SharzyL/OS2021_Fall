@@ -3,62 +3,59 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace proj1 {
 
-enum EMBEDDING_ERROR {
-    LEN_MISMATCH = 0,
-    NON_POSITIVE_LEN
-};
-
 class Embedding{
 public:
-    Embedding() {}
-    Embedding(int);  // Random init an embedding
+    explicit Embedding(int);  // Random init an embedding
     Embedding(int, double*);
-    Embedding(int, std::string);
-    Embedding(Embedding*);
-    ~Embedding() { delete []this->data; }
-    double* get_data() { return this->data; }
-    int get_length() { return this->length; }
-    void update(Embedding*, double);
-    std::string to_string();
-    void write_to_stdout();
+    Embedding(int, const std::string &);
+
+    Embedding(const Embedding&);
+    Embedding(Embedding&&) noexcept;
+    Embedding& operator=(const Embedding &);
+    Embedding& operator=(Embedding &&) noexcept;
+    ~Embedding();
+
+    [[nodiscard]] double* get_data() const;
+    [[nodiscard]] int get_length() const;
+    void update(const Embedding &, double);
+    [[nodiscard]] std::string to_string() const;
+    void write_to_stdout() const;
+
     // Operators
-    Embedding operator+(const Embedding&);
-    Embedding operator+(const double);
-    Embedding operator-(const Embedding&);
-    Embedding operator-(const double);
-    Embedding operator*(const Embedding&);
-    Embedding operator*(const double);
-    Embedding operator/(const Embedding&);
-    Embedding operator/(const double);
-    bool operator==(const Embedding&);
-    bool operator!=(const Embedding&);
+    Embedding operator+(const Embedding&) const;
+    Embedding operator+(double) const;
+    Embedding operator-(const Embedding&) const;
+    Embedding operator-(double) const;
+    Embedding operator*(const Embedding&) const;
+    Embedding operator*(double) const;
+    Embedding operator/(const Embedding&) const;
+    Embedding operator/(double) const;
+    bool operator==(const Embedding&) const;
+    bool operator!=(const Embedding&) const;
 private:
-    int length;
-    double* data;
+    int length = 0;
+    double *data;
 };
 
-using EmbeddingMatrix = std::vector<Embedding*>;
+using EmbeddingMatrix = std::vector<Embedding>;
 using EmbeddingGradient = Embedding;
 
 class EmbeddingHolder{
 public:
-    EmbeddingHolder();
-    EmbeddingHolder(std::string filename);
-    EmbeddingHolder(EmbeddingMatrix &data);
-    ~EmbeddingHolder();
-    static EmbeddingMatrix read(std::string);
+    EmbeddingHolder() = default;
+    explicit EmbeddingHolder(const std::string& filename);
+    static EmbeddingMatrix read(const std::string&);
     void write_to_stdout();
-    void write(std::string filename);
-    int append(Embedding *data);
-    void update_embedding(int, EmbeddingGradient*, double);
-    Embedding* get_embedding(int idx) const { return this->emb_matx[idx]; } 
-    unsigned int get_n_embeddings() { return this->emb_matx.size(); }
-    int get_emb_length() {
-        return this->emb_matx.empty()? 0: this->get_embedding(0)->get_length();
-    }
+    void write(const std::string& filename);
+    int append(const Embedding &embedding);
+    void update_embedding(int, const EmbeddingGradient &, double);
+    Embedding get_embedding(int idx);
+    unsigned int get_n_embeddings();
+    int get_emb_length();
     bool operator==(const EmbeddingHolder&);
 private:
     EmbeddingMatrix emb_matx;

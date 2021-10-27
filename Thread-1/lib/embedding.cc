@@ -2,8 +2,8 @@
 #include <iostream>
 #include <sstream>
 #include <cmath>
+#include <cstring>
 
-#include "utils.h"
 #include "embedding.h"
 
 namespace proj1 {
@@ -17,47 +17,48 @@ Embedding::Embedding(int length) {
 }
 
 Embedding::Embedding(int length, double* data) {
-    embbedingAssert(length > 0, "Non-positive length encountered!", NON_POSITIVE_LEN);
     this->length = length;
-    this->data = data;
+    this->data = new double[length];
+    std::memcpy(this->data, data, length * sizeof(double));
 }
 
-Embedding::Embedding(Embedding* origin) {
-	int length = origin->get_length();
-    embbedingAssert(length > 0, "Non-positive length encountered!", NON_POSITIVE_LEN);
-    double* oldData = origin->get_data();
-    double* newData = new double[length];
-    for(int i = 0; i<length; i++)newData[i] = oldData[i];
-    this->length = length;
-    this->data = newData;
+// Rule of five
+Embedding::Embedding(const Embedding &other): Embedding(other.length, other.data)
+{}
+
+Embedding::Embedding(Embedding &&other) noexcept
+: length(other.length), data(std::exchange(other.data, nullptr))
+{}
+
+Embedding& Embedding::operator=(const Embedding &other) {
+    return *this = Embedding(other);
 }
 
-Embedding::Embedding(int length, std::string raw) {
-    embbedingAssert(length > 0, "Non-positive length encountered!", NON_POSITIVE_LEN);
+Embedding& Embedding::operator=(Embedding &&other) noexcept {
+    length = other.length;
+    std::swap(data, other.data);
+    return *this;
+}
+
+Embedding::~Embedding() { delete [] data; }
+// end rule of five
+
+Embedding::Embedding(int length, const std::string &raw) {
     this->length = length;
-    double* data = new double[length];
+    this->data = new double[length];
     std::stringstream ss(raw);
-    int i;
-    for (i = 0; (i < length) && (ss >> data[i]); ++i) {
-        if (ss.peek() == ',')   ss.ignore();  // Ignore the delimiter
+    for (int i = 0; (i < length) && (ss >> this->data[i]); ++i) {
+        if (ss.peek() == ',') ss.ignore();  // Ignore the delimiter
     }
-    if (i < length) {
-        delete []data;
-        std::cerr << "Not enough elements in the input string!" << std::endl;
-        throw LEN_MISMATCH;
-    }
-    this->data = data;
 }
 
-void Embedding::update(Embedding* gradient, double stepsize) {
-    embbedingAssert(gradient->length == this->length,
-           "Gradient has different length from the embedding!", LEN_MISMATCH);
+void Embedding::update(const Embedding &gradient, double stepsize) {
     for (int i = 0; i < this->length; ++i) {
-        this->data[i] -= stepsize * gradient->data[i];
+        this->data[i] -= stepsize * gradient.data[i];
     }
 }
 
-std::string Embedding::to_string() {
+std::string Embedding::to_string() const {
     std::string res;
     for (int i = 0; i < this->length; ++i) {
         if (i > 0) res += ',';
@@ -66,98 +67,95 @@ std::string Embedding::to_string() {
     return res;
 }
 
-void Embedding::write_to_stdout() {
+void Embedding::write_to_stdout() const {
     std::string prefix("[OUTPUT]");
     std::cout << prefix << this->to_string() << '\n';
 }
 
-Embedding Embedding::operator+(const Embedding &another) {
-    double* data = new double[this->length];
+Embedding Embedding::operator+(const Embedding &another) const {
+    auto* new_data = new double[this->length];
     for (int i = 0; i < this->length; ++i) {
-        data[i] = this->data[i] + another.data[i];
+        new_data[i] = this->data[i] + another.data[i];
     }
-    return Embedding(this->length, data);
+    return {this->length, new_data};
 }
 
-Embedding Embedding::operator+(const double value) {
-    double* data = new double[this->length];
+Embedding Embedding::operator+(const double value) const {
+    auto* new_data = new double[this->length];
     for (int i = 0; i < this->length; ++i) {
-        data[i] = this->data[i] + value;
+        new_data[i] = this->data[i] + value;
     }
-    return Embedding(this->length, data);
+    return {this->length, new_data};
 }
 
-Embedding Embedding::operator-(const Embedding &another) {
-    double* data = new double[this->length];
+Embedding Embedding::operator-(const Embedding &another) const {
+    auto* new_data = new double[this->length];
     for (int i = 0; i < this->length; ++i) {
-        data[i] = this->data[i] - another.data[i];
+        new_data[i] = this->data[i] - another.data[i];
     }
-    return Embedding(this->length, data);
+    return {this->length, new_data};
 }
 
-Embedding Embedding::operator-(const double value) {
-    double* data = new double[this->length];
+Embedding Embedding::operator-(const double value) const {
+    auto* new_data = new double[this->length];
     for (int i = 0; i < this->length; ++i) {
-        data[i] = this->data[i] - value;
+        new_data[i] = this->data[i] - value;
     }
-    return Embedding(this->length, data);
+    return {this->length, new_data};
 }
 
-Embedding Embedding::operator*(const Embedding &another) {
-    double* data = new double[this->length];
+Embedding Embedding::operator*(const Embedding &another) const {
+    auto* new_data = new double[this->length];
     for (int i = 0; i < this->length; ++i) {
-        data[i] = this->data[i] * another.data[i];
+        new_data[i] = this->data[i] * another.data[i];
     }
-    return Embedding(this->length, data);
+    return {this->length, new_data};
 }
 
-Embedding Embedding::operator*(const double value) {
-    double* data = new double[this->length];
+Embedding Embedding::operator*(const double value) const {
+    auto* new_data = new double[this->length];
     for (int i = 0; i < this->length; ++i) {
-        data[i] = this->data[i] * value;
+        new_data[i] = this->data[i] * value;
     }
-    return Embedding(this->length, data);
+    return {this->length, new_data};
 }
 
-Embedding Embedding::operator/(const Embedding &another) {
-    double* data = new double[this->length];
+Embedding Embedding::operator/(const Embedding &another) const {
+    auto* new_data = new double[this->length];
     for (int i = 0; i < this->length; ++i) {
-        data[i] = this->data[i] / another.data[i];
+        new_data[i] = this->data[i] / another.data[i];
     }
-    return Embedding(this->length, data);
+    return {this->length, new_data};
 }
 
-Embedding Embedding::operator/(const double value) {
-    double* data = new double[this->length];
+Embedding Embedding::operator/(const double value) const {
+    auto* new_data = new double[this->length];
     for (int i = 0; i < this->length; ++i) {
-        data[i] = this->data[i] / value;
+        new_data[i] = this->data[i] / value;
     }
-    return Embedding(this->length, data);
+    return {this->length, new_data};
 }
 
-bool Embedding::operator==(const Embedding &another) {
+bool Embedding::operator==(const Embedding &other) const {
     for (int i = 0; i < this->length; ++i) {
-        if(fabs(this->data[i]-another.data[i])>1.0e-6)return false;
+        if (std::abs(this->data[i] - other.data[i]) > 1.0e-6) return false;
     }
     return true;
 }
 
-bool Embedding::operator!=(const Embedding &other) {
-    return !(*this == other);
+bool Embedding::operator!=(const Embedding &other) const {
+    return !this->operator==(other);
 }
 
-EmbeddingHolder::EmbeddingHolder() {
+double *Embedding::get_data() const { return this->data; }
+
+int Embedding::get_length() const { return (int) this->length; }
+
+EmbeddingHolder::EmbeddingHolder(const std::string& filename) {
+    this->emb_matx = proj1::EmbeddingHolder::read(filename);
 }
 
-EmbeddingHolder::EmbeddingHolder(std::string filename) {
-    this->emb_matx = this->read(filename);
-}
-
-EmbeddingHolder::EmbeddingHolder(std::vector<Embedding*> &data) {
-    this->emb_matx = data;
-}
-
-EmbeddingMatrix EmbeddingHolder::read(std::string filename) {
+EmbeddingMatrix EmbeddingHolder::read(const std::string& filename) {
     std::string line;
     std::ifstream ifs(filename);
     int length = 0;
@@ -170,7 +168,7 @@ EmbeddingMatrix EmbeddingHolder::read(std::string filename) {
                 }
                 ++length;
             }
-            Embedding* emb = new Embedding(length, line);
+            Embedding emb(length, line);
             matrix.push_back(emb);
         }
         ifs.close();
@@ -180,23 +178,17 @@ EmbeddingMatrix EmbeddingHolder::read(std::string filename) {
     return matrix;
 }
 
-int EmbeddingHolder::append(Embedding* data) {
-    int indx = this->emb_matx.size();
-    if (!emb_matx.empty()) {
-        embbedingAssert(
-                data->get_length() == this->emb_matx[0]->get_length(),
-                "Embedding to append has a different length!", LEN_MISMATCH
-        );
-    }
-    this->emb_matx.push_back(data);
-    return indx;
+int EmbeddingHolder::append(const Embedding &data) {
+    size_t idx = this->emb_matx.size();
+    this->emb_matx.emplace_back(data);
+    return (int) idx;
 }
 
-void EmbeddingHolder::write(std::string filename) {
+void EmbeddingHolder::write(const std::string& filename) {
     std::ofstream ofs(filename);
     if (ofs.is_open()) {
-        for (Embedding* emb: this->emb_matx) {
-            ofs << emb->to_string() << '\n';
+        for (const auto &emb: this->emb_matx) {
+            ofs << emb.to_string() << '\n';
         }
         ofs.close();
     } else {
@@ -206,31 +198,35 @@ void EmbeddingHolder::write(std::string filename) {
 
 void EmbeddingHolder::write_to_stdout() {
     std::string prefix("[OUTPUT]");
-    for (Embedding* emb: this->emb_matx) {
-        std::cout << prefix << emb->to_string() << '\n';
-    }
-}
-
-EmbeddingHolder::~EmbeddingHolder() {
-    for (Embedding* emb: this->emb_matx) {
-        delete emb;
+    for (const auto &emb: this->emb_matx) {
+        std::cout << prefix << emb.to_string() << '\n';
     }
 }
 
 void EmbeddingHolder::update_embedding(
-        int idx, EmbeddingGradient* gradient, double stepsize) {
-    this->emb_matx[idx]->update(gradient, stepsize);
+        int idx, const EmbeddingGradient &gradient, double stepsize) {
+    this->emb_matx[idx].update(gradient, stepsize);
 }
 
 bool EmbeddingHolder::operator==(const EmbeddingHolder &another) {
     if (this->get_n_embeddings() != another.emb_matx.size())
         return false;
     for (int i = 0; i < (int)this->emb_matx.size(); ++i) {
-        if(!(*(this->emb_matx[i]) == *(another.get_embedding(i)))){
+        if(this->emb_matx[i] != another.emb_matx[i]){
         	return false;
 		}
     }
     return true;
+}
+
+unsigned int EmbeddingHolder::get_n_embeddings() { return this->emb_matx.size(); }
+
+Embedding EmbeddingHolder::get_embedding(int idx) {
+    return this->emb_matx[idx];
+}
+
+int EmbeddingHolder::get_emb_length() {
+    return this->emb_matx.empty()? 0: this->get_embedding(0).get_length();
 }
 
 } // namespace proj1

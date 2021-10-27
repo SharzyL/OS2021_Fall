@@ -9,13 +9,13 @@ namespace proj1 {
 /* NOTE: DO NOT rely on the implementation here. We may
          change the implemenation details.
 */
-double similarity(Embedding* entityA, Embedding* entityB);
+double similarity(const Embedding &entityA, const Embedding &entityB);
 
-EmbeddingGradient* calc_gradient(Embedding* entityA, Embedding* entityB, int label);
+EmbeddingGradient calc_gradient(const Embedding &entityA, const Embedding &entityB, int label);
 
-EmbeddingGradient* cold_start(Embedding* newUser, Embedding* item);
+EmbeddingGradient cold_start(const Embedding &newUser, const Embedding &item);
 
-Embedding* recommend(Embedding* user, std::vector<Embedding*> items);
+const Embedding& recommend(const Embedding &user, const std::vector<Embedding>& items);
 
 } // namespace proj1
 

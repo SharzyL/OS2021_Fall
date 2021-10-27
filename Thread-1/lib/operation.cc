@@ -13,7 +13,7 @@
 #include "fmt/core.h"
 #include "fmt/ranges.h"
 
-// utility for std::visit
+// black magic for std::visit
 template<class... Ts> struct overload : Ts... { using Ts::operator()...; };
 template<class... Ts> overload(Ts...) -> overload<Ts...>;
 
@@ -40,7 +40,7 @@ Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &ins
         if (inst.order == INIT_EMB) {
             user_locks_list.emplace_back(new std::shared_mutex);
 
-            int new_user_idx = users.append(new Embedding(users.get_emb_length()));  // append user
+            int new_user_idx = users.append(Embedding(users.get_emb_length()));  // append user
 
             std::vector<int> item_idx_list;
             item_idx_list.reserve(inst.payloads.size() - 1);
@@ -72,9 +72,9 @@ Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &ins
     }
 }
 
-void Worker::output_recommendation(Embedding *recommendation) {
+void Worker::output_recommendation(const Embedding &recommendation) {
     std::unique_lock<std::mutex> print_guard(printer_lock);
-    recommendation->write_to_stdout();
+    recommendation.write_to_stdout();
 }
 
 void Worker::op_init_emb(int user_idx, const std::vector<int> &item_idx_list) {
@@ -84,10 +84,11 @@ void Worker::op_init_emb(int user_idx, const std::vector<int> &item_idx_list) {
         (*item_locks_list[item_idx]).lock_shared();
     }
 
-    Embedding *user_emb = users.get_embedding(user_idx);
+    Embedding user_emb = users.get_embedding(user_idx);
+    LOG(ERROR) << user_emb.to_string();
     for (int item_index: item_idx_list) {
-        Embedding *item_emb = items.get_embedding(item_index);  // read item
-        EmbeddingGradient *gradient = cold_start(user_emb, item_emb);  // slow
+        Embedding item_emb = items.get_embedding(item_index);  // read item
+        EmbeddingGradient gradient = cold_start(user_emb, item_emb);  // slow
         users.update_embedding(user_idx, gradient, 0.01);
     }
 
@@ -102,11 +103,11 @@ void Worker::op_update_emb(int user_idx, int item_idx, int label) {
     unique_lock user_lock(*user_locks_list[user_idx]);
     unique_lock item_lock(*item_locks_list[item_idx]);
 
-    Embedding *user = users.get_embedding(user_idx);  // read user
-    Embedding *item = items.get_embedding(item_idx);  // read item
-    EmbeddingGradient *user_gradient = calc_gradient(user, item, label);  // slow
+    Embedding user = users.get_embedding(user_idx);  // read user
+    Embedding item = items.get_embedding(item_idx);  // read item
+    const auto &user_gradient = calc_gradient(user, item, label);  // slow
     users.update_embedding(user_idx, user_gradient, 0.01);  // write user
-    EmbeddingGradient *item_gradient = calc_gradient(item, user, label);  // slow
+    const auto &item_gradient = calc_gradient(item, user, label);  // slow
     items.update_embedding(item_idx, item_gradient, 0.001);  // write item
     LOG(INFO) << fmt::format("update user={} item={} label={} end", user_idx, item_idx, label);
 }
@@ -118,13 +119,13 @@ void Worker::op_recommend(int user_idx, const std::vector<int> &item_idx_list) {
         (*item_locks_list[item_idx]).lock_shared();
     }
 
-    Embedding *user = users.get_embedding(user_idx);  // read user
-    std::vector<Embedding *> item_pool;
+    Embedding user = users.get_embedding(user_idx);  // read user
+    std::vector<Embedding> item_pool;
     item_pool.reserve(item_idx_list.size());
     for (auto item_idx : item_idx_list) {
         item_pool.push_back(items.get_embedding(item_idx));  // read item
     }
-    Embedding *recommendation = recommend(user, item_pool);
+    const Embedding &recommendation = recommend(user, item_pool);
     output_recommendation(recommendation);
     for (auto iter = item_idx_list.rbegin(); iter != item_idx_list.rend(); iter++) {
         (*item_locks_list[*iter]).unlock_shared();
@@ -151,7 +152,7 @@ void Worker::work() {
         jobs_list.emplace_back([=]{ execute_task(t); });
     }
     LOG(INFO) << "put all normal tasks";
-    for (const auto &[epoch, tasks] : tasks_in_epoch) {
+    for (const auto& [epoch, tasks] : tasks_in_epoch) {
         LOG(INFO) << fmt::format("push task in epoch {}", epoch);
         for (const auto &t : tasks) {
             epoch_jobs_list.emplace_back([=] { execute_task(t); });
