@@ -53,10 +53,10 @@ public:
     void write(const std::string& filename);
     int append(const Embedding &embedding);
     void update_embedding(int, const EmbeddingGradient &, double);
-    Embedding get_embedding(int idx);
     unsigned int get_n_embeddings();
     int get_emb_length();
     bool operator==(const EmbeddingHolder&);
+    Embedding& operator[](int idx);
 private:
     EmbeddingMatrix emb_matx;
 };

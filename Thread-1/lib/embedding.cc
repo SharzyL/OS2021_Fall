@@ -220,12 +220,12 @@ bool EmbeddingHolder::operator==(const EmbeddingHolder &another) {
 
 unsigned int EmbeddingHolder::get_n_embeddings() { return this->emb_matx.size(); }
 
-Embedding EmbeddingHolder::get_embedding(int idx) {
+Embedding& EmbeddingHolder::operator[](int idx) {
     return this->emb_matx[idx];
 }
 
 int EmbeddingHolder::get_emb_length() {
-    return this->emb_matx.empty()? 0: this->get_embedding(0).get_length();
+    return this->emb_matx.empty() ? 0: (*this)[0].get_length();
 }
 
 } // namespace proj1

@@ -84,9 +84,9 @@ void Worker::op_init_emb(int user_idx, const std::vector<int> &item_idx_list) {
         (*item_locks_list[item_idx]).lock_shared();
     }
 
-    Embedding user_emb = users.get_embedding(user_idx);
+    Embedding &user_emb = users[user_idx];
     for (int item_index: item_idx_list) {
-        Embedding item_emb = items.get_embedding(item_index);  // read item
+        Embedding &item_emb = items[item_index];  // read item
         EmbeddingGradient gradient = cold_start(user_emb, item_emb);  // slow
         users.update_embedding(user_idx, gradient, 0.01);
     }
@@ -102,8 +102,8 @@ void Worker::op_update_emb(int user_idx, int item_idx, int label) {
     unique_lock user_lock(*user_locks_list[user_idx]);
     unique_lock item_lock(*item_locks_list[item_idx]);
 
-    Embedding user = users.get_embedding(user_idx);  // read user
-    Embedding item = items.get_embedding(item_idx);  // read item
+    Embedding &user = users[user_idx];  // read user
+    Embedding &item = items[item_idx];  // read item
     EmbeddingGradient user_gradient = calc_gradient(user, item, label);  // slow
     users.update_embedding(user_idx, user_gradient, 0.01);  // write user
     EmbeddingGradient item_gradient = calc_gradient(item, user, label);  // slow
@@ -118,11 +118,11 @@ void Worker::op_recommend(int user_idx, const std::vector<int> &item_idx_list) {
         (*item_locks_list[item_idx]).lock_shared();
     }
 
-    Embedding user = users.get_embedding(user_idx);  // read user
+    Embedding &user = users[user_idx];  // read user
     std::vector<Embedding> item_pool;
     item_pool.reserve(item_idx_list.size());
     for (auto item_idx : item_idx_list) {
-        item_pool.push_back(items.get_embedding(item_idx));  // read item
+        item_pool.push_back(items[item_idx]);  // read item
     }
     const Embedding &recommendation = recommend(user, item_pool);
     output_recommendation(recommendation);

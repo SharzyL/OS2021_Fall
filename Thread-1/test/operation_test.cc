@@ -34,7 +34,7 @@ void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, Embedd
             Embedding new_user(length);
             int user_idx = users.append(new_user);
             for (int item_index: inst.payloads) {
-                Embedding item_emb = items.get_embedding(item_index);
+                Embedding &item_emb = items[item_index];
                 // Call cold start for downstream applications, slow
                 EmbeddingGradient gradient = cold_start(new_user, item_emb);
                 users.update_embedding(user_idx, gradient, 0.01);
@@ -45,8 +45,8 @@ void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, Embedd
             int user_idx = inst.payloads[0];
             int item_idx = inst.payloads[1];
             int label = inst.payloads[2];
-            Embedding user = users.get_embedding(user_idx);
-            Embedding item = items.get_embedding(item_idx);
+            Embedding &user = users[user_idx];
+            Embedding &item = items[item_idx];
             EmbeddingGradient user_gradient = calc_gradient(user, item, label);
             users.update_embedding(user_idx, user_gradient, 0.01);
             EmbeddingGradient item_gradient = calc_gradient(item, user, label);
@@ -55,11 +55,11 @@ void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, Embedd
         }
         case RECOMMEND: {
             int user_idx = inst.payloads[0];
-            Embedding user = users.get_embedding(user_idx);
+            Embedding &user = users[user_idx];
             std::vector<Embedding> item_pool;
             for (unsigned int i = 2; i < inst.payloads.size(); ++i) {
                 int item_idx = inst.payloads[i];
-                item_pool.push_back(items.get_embedding(item_idx));
+                item_pool.push_back(items[item_idx]);
             }
             Embedding recommendation = recommend(user, item_pool);
             if (recommendations != nullptr) {
