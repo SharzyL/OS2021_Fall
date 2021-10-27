@@ -16,10 +16,14 @@ Embedding::Embedding(int length) {
     this->length = length;
 }
 
-Embedding::Embedding(int length, double* data) {
+Embedding::Embedding(int length, double* data, bool do_copy) {
     this->length = length;
-    this->data = new double[length];
-    std::memcpy(this->data, data, length * sizeof(double));
+    if (do_copy) {
+        this->data = new double[length];
+        std::memcpy(this->data, data, length * sizeof(double));
+    } else {
+        this->data = data;
+    }
 }
 
 // Rule of five
@@ -77,7 +81,7 @@ Embedding Embedding::operator+(const Embedding &another) const {
     for (int i = 0; i < this->length; ++i) {
         new_data[i] = this->data[i] + another.data[i];
     }
-    return {this->length, new_data};
+    return {this->length, new_data, false};
 }
 
 Embedding Embedding::operator+(const double value) const {
@@ -85,7 +89,7 @@ Embedding Embedding::operator+(const double value) const {
     for (int i = 0; i < this->length; ++i) {
         new_data[i] = this->data[i] + value;
     }
-    return {this->length, new_data};
+    return {this->length, new_data, false};
 }
 
 Embedding Embedding::operator-(const Embedding &another) const {
@@ -93,7 +97,7 @@ Embedding Embedding::operator-(const Embedding &another) const {
     for (int i = 0; i < this->length; ++i) {
         new_data[i] = this->data[i] - another.data[i];
     }
-    return {this->length, new_data};
+    return {this->length, new_data, false};
 }
 
 Embedding Embedding::operator-(const double value) const {
@@ -101,7 +105,7 @@ Embedding Embedding::operator-(const double value) const {
     for (int i = 0; i < this->length; ++i) {
         new_data[i] = this->data[i] - value;
     }
-    return {this->length, new_data};
+    return {this->length, new_data, false};
 }
 
 Embedding Embedding::operator*(const Embedding &another) const {
@@ -109,7 +113,7 @@ Embedding Embedding::operator*(const Embedding &another) const {
     for (int i = 0; i < this->length; ++i) {
         new_data[i] = this->data[i] * another.data[i];
     }
-    return {this->length, new_data};
+    return {this->length, new_data, false};
 }
 
 Embedding Embedding::operator*(const double value) const {
@@ -117,7 +121,7 @@ Embedding Embedding::operator*(const double value) const {
     for (int i = 0; i < this->length; ++i) {
         new_data[i] = this->data[i] * value;
     }
-    return {this->length, new_data};
+    return {this->length, new_data, false};
 }
 
 Embedding Embedding::operator/(const Embedding &another) const {
@@ -125,7 +129,7 @@ Embedding Embedding::operator/(const Embedding &another) const {
     for (int i = 0; i < this->length; ++i) {
         new_data[i] = this->data[i] / another.data[i];
     }
-    return {this->length, new_data};
+    return {this->length, new_data, false};
 }
 
 Embedding Embedding::operator/(const double value) const {
@@ -133,7 +137,7 @@ Embedding Embedding::operator/(const double value) const {
     for (int i = 0; i < this->length; ++i) {
         new_data[i] = this->data[i] / value;
     }
-    return {this->length, new_data};
+    return {this->length, new_data, false};
 }
 
 bool Embedding::operator==(const Embedding &other) const {

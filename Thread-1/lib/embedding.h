@@ -10,7 +10,7 @@ namespace proj1 {
 class Embedding{
 public:
     explicit Embedding(int);  // Random init an embedding
-    Embedding(int, double*);
+    Embedding(int, double*, bool do_copy = true);
     Embedding(int, const std::string &);
 
     Embedding(const Embedding&);
