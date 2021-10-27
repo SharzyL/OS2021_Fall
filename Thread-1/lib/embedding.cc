@@ -203,8 +203,7 @@ void EmbeddingHolder::write_to_stdout() {
     }
 }
 
-void EmbeddingHolder::update_embedding(
-        int idx, const EmbeddingGradient &gradient, double stepsize) {
+void EmbeddingHolder::update_embedding(int idx, const EmbeddingGradient &gradient, double stepsize) {
     this->emb_matx[idx].update(gradient, stepsize);
 }
 

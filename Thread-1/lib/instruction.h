@@ -20,8 +20,8 @@ struct Instruction {
 
 using Instructions = std::vector<Instruction>;
 
-Instructions read_instructions(const std::string &filename);
-Instructions read_instructions_from_str(const std::string &str);
+Instructions instr_from_file(const std::string &filename);
+Instructions instr_from_str(const std::string &str);
 
 } // namespace proj1
 #endif  // THREAD_LIB_INSTRUCTION_H_

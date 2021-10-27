@@ -15,7 +15,7 @@ Instruction::Instruction(std::string line) {
     }
 }
 
-Instructions read_instructions(const std::string &filename) {
+Instructions instr_from_file(const std::string &filename) {
     std::ifstream ifs(filename);
     std::string line;
     Instructions data;
@@ -28,7 +28,7 @@ Instructions read_instructions(const std::string &filename) {
     return data;
 }
 
-Instructions read_instructions_from_str(const std::string &str) {
+Instructions instr_from_str(const std::string &str) {
     std::stringstream st(str);
     std::string line;
     Instructions data;

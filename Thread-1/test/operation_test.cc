@@ -15,10 +15,9 @@ namespace proj1 {
 
 class WorkerForTest : public Worker {
 public:
-    WorkerForTest(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &instructions, EmbeddingHolder *recommendations)
+    WorkerForTest(EmbeddingHolder &users, EmbeddingHolder &items, const Instructions &instructions, EmbeddingHolder *recommendations)
             : Worker(users, items, instructions), recommendations(recommendations)
-    {
-    }
+    {}
 
     void output_recommendation(const Embedding &recommendation) override {
         std::unique_lock<std::mutex> print_guard(printer_lock);
@@ -27,13 +26,12 @@ public:
     EmbeddingHolder *recommendations;
 };
 
-void run_one_instruction(Instruction inst, EmbeddingHolder &users, EmbeddingHolder &items, EmbeddingHolder* recommendations=nullptr) {
+void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, EmbeddingHolder &items, EmbeddingHolder* recommendations=nullptr) {
     switch (inst.order) {
         case INIT_EMB: {
             // We need to init the embedding
             int length = users.get_emb_length();
             Embedding new_user(length);
-            LOG(ERROR) << new_user.to_string();
             int user_idx = users.append(new_user);
             for (int item_index: inst.payloads) {
                 Embedding item_emb = items.get_embedding(item_index);
@@ -74,369 +72,151 @@ void run_one_instruction(Instruction inst, EmbeddingHolder &users, EmbeddingHold
     }
 }
 
-class InitData {
-public:
-    InitData():
-            users1("data/q1.in"),
-            users2("data/q1.in"),
-            items1("data/q1.in"),
-            items2("data/q1.in"),
-            my_users("data/q1.in"),
-            my_items("data/q1.in")
-    {}
+bool testWorker(const std::string &data_file, const std::vector<Instructions> &instr_refs, const Instructions &instr_test) {
+    EmbeddingHolder recom_test;
+    EmbeddingHolder users_test(data_file), items_test(data_file);
+    WorkerForTest worker(users_test, items_test, instr_test, &recom_test);
+    worker.work();
 
-    EmbeddingHolder users1;
-    EmbeddingHolder users2;
-    EmbeddingHolder items1;
-    EmbeddingHolder items2;
-    EmbeddingHolder my_users;
-    EmbeddingHolder my_items;
-};
+    for (const auto &instr_ref : instr_refs) {
+        EmbeddingHolder recom_ref;
+        EmbeddingHolder users_ref(data_file), items_ref(data_file);
+        for (const auto &instr : instr_ref) {
+            run_one_instruction(instr, users_ref, items_ref, &recom_ref);
+        }
+        if (recom_test == recom_ref && users_test == users_ref && items_test == items_ref) return true;
+    }
+    return false;
+}
 
-TEST(TestInit, Once) {
-    InitData init_data;
-    std::string insr_str1 = "0 0 1";
-    proj1::Instructions instructions = read_instructions_from_str(insr_str1);
-
-//    for (proj1::Instruction inst: instructions) {
-//        proj1::run_one_instruction(inst, init_data.users1, init_data.items1);
-//    }
-//
-    proj1::Worker w(init_data.my_users, init_data.my_items, instructions);
-    w.work();
-
-//    EXPECT_TRUE(
-//            init_data.my_users == init_data.users1 && init_data.my_items == init_data.items1
-//    );
+bool testWorker(const std::string &data_file, const Instructions &instr_test) {
+    return testWorker(data_file, std::vector<Instructions>{instr_test}, instr_test);
 }
 
 TEST(TestInit, ThreadSafe) {
-    InitData init_data;
-    std::string insr_str1 = "0 0 1";
-    std::string insr_str2 = "0 1";
-    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
+    std::string instr1 = "0 0 1";
+    std::string instr2 = "0 1";
+    Instructions instr_seq1 = instr_from_str(instr1 + "\n" + instr2);
+    Instructions instr_seq2 = instr_from_str(instr2 + "\n" + instr1);
+    EXPECT_TRUE(testWorker("data/q1.in", std::vector{instr_seq1, instr_seq2}, instr_seq1));
+}
 
-    for (proj1::Instruction inst: instructions1) {
-        proj1::run_one_instruction(inst, init_data.users1, init_data.items1);
-    }
-    for (proj1::Instruction inst: instructions2) {
-        proj1::run_one_instruction(inst, init_data.users2, init_data.items2);
-    }
-
-    proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
-    w.work();
-
-    EXPECT_TRUE(
-            (init_data.my_users == init_data.users1 && init_data.my_items == init_data.items1)
-            || (init_data.my_users == init_data.users2 && init_data.my_items == init_data.items2)
-    );
+TEST(TestUpdate, Once) {
+    std::string instr1 = "1 0 1 0";
+    Instructions instr_seq = instr_from_str(instr1);
+    EXPECT_TRUE(testWorker("data/q1.in", instr_seq));
 }
 
 TEST(TestUpdate, ThreadSafe1) {
-    InitData init_data;
-    std::string insr_str1 = "1 0 1 0";
-    std::string insr_str2 = "1 0 2 1";
-    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
-
-    for (proj1::Instruction inst: instructions1) {
-        proj1::run_one_instruction(inst, init_data.users1, init_data.items1);
-    }
-    for (proj1::Instruction inst: instructions2) {
-        proj1::run_one_instruction(inst, init_data.users2, init_data.items2);
-    }
-    
-    proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
-    w.work();
-
-    EXPECT_TRUE(
-            (init_data.my_users == init_data.users1 && init_data.my_items == init_data.items1)
-            || (init_data.my_users == init_data.users2 && init_data.my_items == init_data.items2)
-    );
+    std::string instr1 = "1 0 1 0";
+    std::string instr2 = "1 0 2 1";
+    Instructions instr_seq1 = instr_from_str(instr1 + "\n" + instr2);
+    Instructions instr_seq2 = instr_from_str(instr2 + "\n" + instr1);
+    EXPECT_TRUE(testWorker("data/q1.in", std::vector{instr_seq1, instr_seq2}, instr_seq1));
 }
 
 TEST(TestUpdate, ThreadSafe2) {
-    InitData init_data;
-    std::string insr_str1 = "1 0 1 1 0";
-    std::string insr_str2 = "1 0 0 1 1";
-    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
-
-    for (proj1::Instruction inst: instructions1) {
-        proj1::run_one_instruction(inst, init_data.users1, init_data.items1);
-    }
-    for (proj1::Instruction inst: instructions2) {
-        proj1::run_one_instruction(inst, init_data.users2, init_data.items2);
-    }
-
-    proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
-    w.work();
-
-    EXPECT_TRUE(
-            (init_data.my_users == init_data.users1 && init_data.my_items == init_data.items1)
-            || (init_data.my_users == init_data.users2 && init_data.my_items == init_data.items2)
-    );
+    std::string instr1 = "1 0 1 1 0";
+    std::string instr2 = "1 0 0 1 1";
+    Instructions instr_seq1 = instr_from_str(instr1 + "\n" + instr2);
+    Instructions instr_seq2 = instr_from_str(instr2 + "\n" + instr1);
+    EXPECT_TRUE(testWorker("data/q1.in", std::vector{instr_seq1, instr_seq2}, instr_seq1));
 }
 
 TEST(TestUpdate, EpochCorrectness) {
-    for (int i = 0; i < 10; i++) {
-        InitData init_data;
-        std::string insr_str1 = "1 1 1 1 1";
-        std::string insr_str2 = "1 2 1 2 2";
-        std::string insr_str3 = "1 1 0 2 0";
-        proj1::Instructions instructions1 = read_instructions_from_str(insr_str3 + "\n" + insr_str1 + "\n" + insr_str2);
-
-        for (proj1::Instruction inst: instructions1) {
-            proj1::run_one_instruction(inst, init_data.users1, init_data.items1);
-        }
-
-        proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
-        w.work();
-
-        EXPECT_TRUE(
-                init_data.my_users == init_data.users1
-        );
-        EXPECT_TRUE(
-                init_data.my_items == init_data.items1
-        );
-    }
+    std::string instr1 = "1 1 1 1 1";
+    std::string instr2 = "1 2 1 2 2";
+    std::string instr3 = "1 1 0 2 0";
+    Instructions instr_seq = instr_from_str(instr3 + "\n" + instr1 + "\n" + instr2);
+    EXPECT_TRUE(testWorker("data/q1.in", instr_seq));
 }
 
 TEST(TestRecommend, ThreadSafeAndCorrectness) {
-    InitData init_data;
-    std::string insr_str1 = "2 0 -1 1 2 3 4";
-    std::string insr_str2 = "2 0 -1 3 4 5 6";
-    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
-
-    EmbeddingHolder recommend1;
-    EmbeddingHolder recommend2;
-    for (proj1::Instruction inst: instructions1) {
-        proj1::run_one_instruction(inst, init_data.users1, init_data.items1, &recommend1);
-    }
-    for (proj1::Instruction inst: instructions2) {
-        proj1::run_one_instruction(inst, init_data.users2, init_data.items2, &recommend2);
-    }
-    
-    EmbeddingHolder my_recommend;
-    proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
-    w.work();
-
-    EXPECT_TRUE(
-            (init_data.my_users == init_data.users2 && recommend2 == my_recommend && init_data.my_items == init_data.items2) || (init_data.my_users == init_data.users1 && recommend1 == my_recommend && init_data.my_items == init_data.items1)
-    );
+    std::string instr1 = "2 0 -1 1 2 3 4";
+    std::string instr2 = "2 0 -1 3 4 5 6";
+    Instructions instr_seq1 = instr_from_str(instr1 + "\n" + instr2);
+    Instructions instr_seq2 = instr_from_str(instr2 + "\n" + instr1);
+    EXPECT_TRUE(testWorker("data/q1.in", std::vector{instr_seq1, instr_seq2}, instr_seq1));
 }
 
 TEST(TestRecommendAndInit, ThreadSafe) {
-    InitData init_data;
-    std::string insr_str1 = "2 0 -1 1 2 3 4";
-    std::string insr_str2 = "0 0 1 2 3";
-    Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
-    Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
-
-    EmbeddingHolder recommend1;
-    EmbeddingHolder recommend2;
-    for (const auto &inst: instructions1) {
-        run_one_instruction(inst, init_data.users1, init_data.items1, &recommend1);
-    }
-    for (const auto &inst: instructions2) {
-        proj1::run_one_instruction(inst, init_data.users2, init_data.items2, &recommend2);
-    }
-    
-    EmbeddingHolder my_recommend;
-    WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
-    w.work();
-
-    EXPECT_TRUE(
-            (init_data.my_users == init_data.users2 && recommend2 == my_recommend && init_data.my_items == init_data.items2) || (init_data.my_users == init_data.users1 && recommend1 == my_recommend && init_data.my_items == init_data.items1)
-    );
+    std::string instr1 = "2 0 -1 1 2 3 4";
+    std::string instr2 = "0 0 1 2 3";
+    Instructions instr_seq1 = instr_from_str(instr1 + "\n" + instr2);
+    Instructions instr_seq2 = instr_from_str(instr2 + "\n" + instr1);
+    EXPECT_TRUE(testWorker("data/q1.in", std::vector{instr_seq1, instr_seq2}, instr_seq1));
 }
 
 TEST(TestUpdateAndInit, ThreadSafe) {
-    InitData init_data;
-    std::string insr_str1 = "1 0 0 1 0";
-    std::string insr_str2 = "0 0 1 2 3";
-    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
-
-    for (proj1::Instruction inst: instructions1) {
-        proj1::run_one_instruction(inst, init_data.users1, init_data.items1);
-    }
-    for (proj1::Instruction inst: instructions2) {
-        proj1::run_one_instruction(inst, init_data.users2, init_data.items2);
-    }
-
-    proj1::Worker w(init_data.my_users, init_data.my_items, instructions1);
-    w.work();
-
-    EXPECT_TRUE(
-            (init_data.my_users == init_data.users1 && init_data.my_items == init_data.items1) || (init_data.my_users == init_data.users2 && init_data.my_items == init_data.items2)
-    );
+    std::string instr1 = "1 0 0 1 0";
+    std::string instr2 = "0 0 1 2 3";
+    Instructions instr_seq1 = instr_from_str(instr1 + "\n" + instr2);
+    Instructions instr_seq2 = instr_from_str(instr2 + "\n" + instr1);
+    EXPECT_TRUE(testWorker("data/q1.in", std::vector{instr_seq1, instr_seq2}, instr_seq1));
 }
 
 TEST(TestUpdateAndRecommend, ThreadSafe) {
-    InitData init_data;
-    std::string insr_str1 = "1 0 1 0";
-    std::string insr_str2 = "2 0 0 0 1 2";
-    proj1::Instructions instructions1 = read_instructions_from_str(insr_str1 + "\n" + insr_str2);
-    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1);
-    EmbeddingHolder recommend1;
-    EmbeddingHolder recommend2;
-    for (proj1::Instruction inst: instructions1) {
-        proj1::run_one_instruction(inst, init_data.users1, init_data.items1, &recommend1);
-    }
-    for (proj1::Instruction inst: instructions2) {
-        proj1::run_one_instruction(inst, init_data.users2, init_data.items2, &recommend2);
-    }
-    
-    EmbeddingHolder my_recommend;
-    proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
-    w.work();
-
-    EXPECT_TRUE(
-            (init_data.my_users == init_data.users2 && recommend2 == my_recommend && init_data.my_items == init_data.items2) || (init_data.my_users == init_data.users1 && recommend1 == my_recommend && init_data.my_items == init_data.items1)
-    );
+    std::string instr1 = "1 0 1 0";
+    std::string instr2 = "2 0 0 0 1 2";
+    Instructions instr_seq1 = instr_from_str(instr1 + "\n" + instr2);
+    Instructions instr_seq2 = instr_from_str(instr2 + "\n" + instr1);
+    EXPECT_TRUE(testWorker("data/q1.in", std::vector{instr_seq1, instr_seq2}, instr_seq1));
 }
 
 TEST(TestRecommend, Epoch1) {
-    InitData init_data;
-    std::string insr_str1 = "1 0 0 1 1";
-    std::string insr_str2 = "2 0 -1 0 1";
-    std::string insr_str3 = "2 0 0 0 1";
-    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str3 + "\n" + insr_str1);
-    EmbeddingHolder recommend2;
-    for (proj1::Instruction inst: instructions2) {
-        proj1::run_one_instruction(inst, init_data.users2, init_data.items2, &recommend2);
-    }
-    
-    EmbeddingHolder my_recommend;
-    proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions2, &my_recommend);
-    w.work();
-
-    EXPECT_TRUE(
-            init_data.my_users == init_data.users2
-    );
-    EXPECT_TRUE(
-            recommend2 == my_recommend
-    );
-    EXPECT_TRUE(
-            init_data.my_items == init_data.items2
-    );
+    std::string instr1 = "1 0 0 1 1";
+    std::string instr2 = "2 0 -1 0 1";
+    std::string instr3 = "2 0 0 0 1";
+    Instructions instr_seq = instr_from_str(instr2 + "\n" + instr3 + "\n" + instr1);
+    EXPECT_TRUE(testWorker("data/q1.in", instr_seq));
 }
 
 TEST(TestRecommend, Epoch2) {
-    InitData init_data;
-    std::string insr_str1 = "1 0 0 0 0";
-    std::string insr_str2 = "2 0 1 0 1";
-    std::string insr_str3 = "2 0 2 0 1";
-    proj1::Instructions instructions2 = read_instructions_from_str(insr_str1 + "\n" + insr_str2 + "\n" + insr_str3);
-    EmbeddingHolder recommend2;
-    for (proj1::Instruction inst: instructions2) {
-        proj1::run_one_instruction(inst, init_data.users2, init_data.items2, &recommend2);
-    }
-    
-    EmbeddingHolder my_recommend;
-    proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions2, &my_recommend);
-    w.work();
-
-    EXPECT_TRUE(
-            init_data.my_users == init_data.users2
-    );
-    EXPECT_TRUE(
-            recommend2 == my_recommend
-    );
-    EXPECT_TRUE(
-            init_data.my_items == init_data.items2
-    );
+    std::string instr1 = "1 0 0 0 0";
+    std::string instr2 = "2 0 1 0 1";
+    std::string instr3 = "2 0 2 0 1";
+    Instructions instr_seq = instr_from_str(instr2 + "\n" + instr3 + "\n" + instr1);
+    EXPECT_TRUE(testWorker("data/q1.in", instr_seq));
 }
 
 TEST(TestRecommendAndUpdate, Epoch1) {
-    InitData init_data;
-    std::string insr_str1 = "1 0 0 1 0";
-    std::string insr_str2 = "1 0 0 0 0";
-    std::string insr_str3 = "2 0 -1 0 1";
-    std::string insr_str4 = "2 1 2 0 1";
-    proj1::Instructions instructions1 = read_instructions_from_str(insr_str3 + "\n" + insr_str2+ "\n" + insr_str1 + "\n" + insr_str4);
-    proj1::Instructions instructions2 = read_instructions_from_str(insr_str2 + "\n" + insr_str1 + "\n" + insr_str2 + "\n" + insr_str4);
-    EmbeddingHolder recommend1;
-    EmbeddingHolder recommend2;
-    for (proj1::Instruction inst: instructions1) {
-        proj1::run_one_instruction(inst, init_data.users1, init_data.items1, &recommend1);
-    }
-    for (proj1::Instruction inst: instructions2) {
-        proj1::run_one_instruction(inst, init_data.users2, init_data.items2, &recommend2);
-    }
-    
-    EmbeddingHolder my_recommend;
-    proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
-    w.work();
-
-    EXPECT_TRUE(
-            (init_data.my_users == init_data.users2 && recommend2 == my_recommend && init_data.my_items == init_data.items2) || (init_data.my_users == init_data.users1 && recommend1 == my_recommend && init_data.my_items == init_data.items1)
-    );
+    std::string instr1 = "1 0 0 1 0";
+    std::string instr2 = "1 0 0 0 0";
+    std::string instr3 = "2 0 -1 0 1";
+    std::string instr4 = "2 1 2 0 1";
+    Instructions instr_seq1 = instr_from_str(instr3 + "\n" + instr2+ "\n" + instr1 + "\n" + instr4);
+    Instructions instr_seq2 = instr_from_str(instr2 + "\n" + instr1 + "\n" + instr2 + "\n" + instr4);
+    EXPECT_TRUE(testWorker("data/q1.in", std::vector{instr_seq1, instr_seq2}, instr_seq1));
 }
 
 TEST(TestRecommendAndUpdate, Epoch2) {
-    InitData init_data;
-    std::string insr_str1 = "1 0 0 1 0";
-    std::string insr_str2 = "1 0 0 0 1";
-    std::string insr_str3 = "2 0 -1 0 1";
-    std::string insr_str4 = "2 1 2 0 1";
-    proj1::Instructions instructions2 = read_instructions_from_str(insr_str3 + "\n" + insr_str1 + "\n" + insr_str2 + "\n" + insr_str4);
-    EmbeddingHolder recommend2;
-    for (proj1::Instruction inst: instructions2) {
-        proj1::run_one_instruction(inst, init_data.users2, init_data.items2, &recommend2);
-    }
-    
-    EmbeddingHolder my_recommend;
-    proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions2, &my_recommend);
-    w.work();
-
-    EXPECT_TRUE(
-            init_data.my_users == init_data.users2
-    );
-    EXPECT_TRUE(
-            recommend2 == my_recommend
-    );
-    EXPECT_TRUE(
-            init_data.my_items == init_data.items2
-    );
+    std::string instr1 = "1 0 0 1 0";
+    std::string instr2 = "1 0 0 0 1";
+    std::string instr3 = "2 0 -1 0 1";
+    std::string instr4 = "2 1 2 0 1";
+    Instructions instr_seq = instr_from_str(instr3 + "\n" + instr1 + "\n" + instr2 + "\n" + instr4);
+    EXPECT_TRUE(testWorker("data/q1.in", instr_seq));
 }
 
 TEST(TestWorkload, Epoch) {
-        InitData init_data;
-        std::string insr_str1 = "2 0 -1 0 1";  // epoch -1
-        std::string insr_str2 = "1 0 0 0 0";   // epoch 0
-        std::string insr_str3 = "1 0 0 1 1";   // epoch 1
-        std::string insr_str4 = "2 1 2 0 1";   // epoch 2
-        std::string insr1 = "";
-        std::string insr2 = "";
-        std::string insr3 = "";
-        std::string insr4 = "";
-        for(int i = 0; i < 100; i++) {
-            std::string trailing_char = i < 99 ? "\n" : "";
-            insr1 += insr_str1 + trailing_char;
-            insr2 += insr_str2 + trailing_char;
-            insr3 += insr_str3 + trailing_char;
-            insr4 += insr_str4 + trailing_char;
-        }
-        proj1::Instructions instructions1 = read_instructions_from_str(insr1 + "\n" + insr2+ "\n" + insr3 + "\n" + insr4);
-        EmbeddingHolder recommend1;
-        for (proj1::Instruction inst: instructions1) {
-            proj1::run_one_instruction(inst, init_data.users1, init_data.items1, &recommend1);
-        }
-
-        EmbeddingHolder my_recommend;
-        proj1::WorkerForTest w(init_data.my_users, init_data.my_items, instructions1, &my_recommend);
-        w.work();
-
-        EXPECT_TRUE((
-                init_data.my_users == init_data.users1
-                && init_data.my_items == init_data.items1
-                && recommend1 == my_recommend
-        ));
+    std::string instr1 = "2 0 -1 0 1";  // epoch -1
+    std::string instr2 = "1 0 0 0 0";   // epoch 0
+    std::string instr3 = "1 0 0 1 1";   // epoch 1
+    std::string instr4 = "2 1 2 0 1";   // epoch 2
+    std::string instr_seq1 = "";
+    std::string instr_seq2 = "";
+    std::string instr_seq3 = "";
+    std::string instr_seq4 = "";
+    for(int i = 0; i < 5; i++) {
+        std::string trailing_char = i < 4 ? "\n" : "";
+        instr_seq1 += instr1 + trailing_char;
+        instr_seq2 += instr2 + trailing_char;
+        instr_seq3 += instr3 + trailing_char;
+        instr_seq4 += instr4 + trailing_char;
     }
+    Instructions instr_seq = instr_from_str(instr_seq1 + "\n" + instr_seq2+ "\n" + instr_seq3 + "\n" + instr_seq4);
+    EXPECT_TRUE(testWorker("data/q1.in", instr_seq));
+}
 
 int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);

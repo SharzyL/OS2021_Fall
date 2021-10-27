@@ -19,7 +19,7 @@ template<class... Ts> overload(Ts...) -> overload<Ts...>;
 
 namespace proj1 {
 
-Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &instructions)
+Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, const Instructions &instructions)
     : users(users), items(items), instructions(instructions) {
     std::vector<Task> last_tasks;
 
@@ -45,7 +45,7 @@ Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &ins
             std::vector<int> item_idx_list;
             item_idx_list.reserve(inst.payloads.size() - 1);
             for (auto item_idx : inst.payloads) {
-                item_idx_list.push_back(item_idx);
+                item_idx_list.push_back(item_idx);  // TODO: sort these
             }
             InitTask t{new_user_idx, std::move(item_idx_list)};
             normal_tasks.emplace_back(t);  // TODO: avoid copy here
@@ -85,7 +85,6 @@ void Worker::op_init_emb(int user_idx, const std::vector<int> &item_idx_list) {
     }
 
     Embedding user_emb = users.get_embedding(user_idx);
-    LOG(ERROR) << user_emb.to_string();
     for (int item_index: item_idx_list) {
         Embedding item_emb = items.get_embedding(item_index);  // read item
         EmbeddingGradient gradient = cold_start(user_emb, item_emb);  // slow
@@ -105,9 +104,9 @@ void Worker::op_update_emb(int user_idx, int item_idx, int label) {
 
     Embedding user = users.get_embedding(user_idx);  // read user
     Embedding item = items.get_embedding(item_idx);  // read item
-    const auto &user_gradient = calc_gradient(user, item, label);  // slow
+    EmbeddingGradient user_gradient = calc_gradient(user, item, label);  // slow
     users.update_embedding(user_idx, user_gradient, 0.01);  // write user
-    const auto &item_gradient = calc_gradient(item, user, label);  // slow
+    EmbeddingGradient item_gradient = calc_gradient(item, user, label);  // slow
     items.update_embedding(item_idx, item_gradient, 0.001);  // write item
     LOG(INFO) << fmt::format("update user={} item={} label={} end", user_idx, item_idx, label);
 }

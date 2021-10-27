@@ -24,9 +24,9 @@ public:
     using shared_lock = std::shared_lock<std::shared_mutex>;
     EmbeddingHolder &users;
     EmbeddingHolder &items;
-    Instructions &instructions;
+    const Instructions &instructions;
 
-    Worker(EmbeddingHolder &users, EmbeddingHolder &items, Instructions &instructions);
+    Worker(EmbeddingHolder &users, EmbeddingHolder &items, const Instructions &instructions);
     void work();
 
 protected:
