@@ -14,9 +14,4 @@ int main(int argc, char **argv) {
 
     proj1::Worker w(users, items, instructions);
     w.work();
-
-    users.write_to_stdout();
-    items.write_to_stdout();
-
-    return 0;
 }

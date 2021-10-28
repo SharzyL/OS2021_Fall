@@ -157,8 +157,8 @@ void Worker::op_update_emb(int user_idx, int item_idx, int label) {
     const Embedding item = get_item_emb(item_idx);
     auto user_gradient_future = std::async(std::launch::async, calc_gradient, user, item, label); // slow
     auto item_gradient_future = std::async(std::launch::async, calc_gradient, item, user, label); // slow
-    update_user_emb(user_idx, user_gradient_future.get(), 0.01);                           // write user
-    update_item_emb(item_idx, item_gradient_future.get(), 0.001);                          // write item
+    update_user_emb(user_idx, user_gradient_future.get(), 0.01);                                  // write user
+    update_item_emb(item_idx, item_gradient_future.get(), 0.001);                                 // write item
     LOG(INFO) << fmt::format("update user={} item={} label={} end", user_idx, item_idx, label);
 }
 
