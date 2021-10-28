@@ -158,12 +158,12 @@ void Worker::op_update_emb(int user_idx, int item_idx, int label) {
     unique_lock user_lock(*user_locks_list[user_idx]);
     unique_lock item_lock(*item_locks_list[item_idx]);
 
-    Embedding &user = users[user_idx];                                  // read user
-    Embedding &item = items[item_idx];                                  // read item
-    EmbeddingGradient user_gradient = calc_gradient(user, item, label); // slow
-    users.update_embedding(user_idx, user_gradient, 0.01);              // write user
-    EmbeddingGradient item_gradient = calc_gradient(item, user, label); // slow
-    items.update_embedding(item_idx, item_gradient, 0.001);             // write item
+    const Embedding user = users[user_idx];                                                       // read user
+    const Embedding item = items[item_idx];                                                       // read item
+    auto user_gradient_future = std::async(std::launch::async, calc_gradient, user, item, label); // slow
+    auto item_gradient_future = std::async(std::launch::async, calc_gradient, item, user, label); // slow
+    users.update_embedding(user_idx, user_gradient_future.get(), 0.01);                           // write user
+    items.update_embedding(item_idx, item_gradient_future.get(), 0.001);                          // write item
     LOG(INFO) << fmt::format("update user={} item={} label={} end", user_idx, item_idx, label);
 }
 

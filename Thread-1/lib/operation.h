@@ -23,8 +23,6 @@ void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, Embedd
 
 class Worker {
 public:
-    using unique_lock = std::unique_lock<std::shared_mutex>;
-    using shared_lock = std::shared_lock<std::shared_mutex>;
     EmbeddingHolder &users;
     EmbeddingHolder &items;
     const Instructions &instructions;
@@ -33,6 +31,9 @@ public:
     void work();
 
 protected:
+    using unique_lock = std::unique_lock<std::shared_mutex>;
+    using shared_lock = std::shared_lock<std::shared_mutex>;
+
     virtual void output_recommendation(const Embedding &recommendation);
     void op_init_emb(int user_idx, const std::vector<int> &item_idx_list);
     void op_update_emb(int user_idx, int item_idx, int label);
