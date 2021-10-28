@@ -3,6 +3,7 @@
 //
 
 #include <algorithm>
+#include <future>
 
 #include "embedding.h"
 #include "instruction.h"
@@ -131,14 +132,23 @@ void Worker::op_init_emb(int user_idx, const std::vector<int> &item_idx_list) {
     LOG(INFO) << fmt::format("init user={} {}", user_idx, item_idx_list);
     unique_lock lock(*user_locks_list[user_idx]);
 
-    Embedding &user_emb = users[user_idx];
+    const Embedding user_emb = users[user_idx];
+    std::vector<std::future<Embedding>> gradient_futures;
+    gradient_futures.reserve(item_idx_list.size());
     for (int item_index : item_idx_list) {
-        shared_lock item_lock(*item_locks_list[item_index]);
-        Embedding &item_emb = items[item_index];                     // read item
-        item_lock.unlock();
-        EmbeddingGradient gradient = cold_start(user_emb, item_emb); // slow
-        users.update_embedding(user_idx, gradient, 0.01);
+        gradient_futures.emplace_back(std::async(std::launch::async, [item_index, this, &user_emb] {
+            shared_lock item_lock(*item_locks_list[item_index]);
+            const Embedding item_emb = items[item_index]; // read item
+            item_lock.unlock();
+            return cold_start(user_emb, item_emb); // slow (20)
+        }));
     }
+
+    Embedding total_gradient = Embedding(users.get_emb_length()) * 0;
+    for (auto &gradient_future : gradient_futures) {
+        total_gradient = total_gradient + gradient_future.get();
+    }
+    users.update_embedding(user_idx, total_gradient, 0.01);
 
     LOG(INFO) << fmt::format("init user={} {} end", user_idx, item_idx_list);
 }

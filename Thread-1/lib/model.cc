@@ -28,7 +28,7 @@ EmbeddingGradient calc_gradient(const Embedding &embA, const Embedding &embB, in
 
     // Here we simulate a slow calculation
     a_slow_function(10);
-    return embB * binary_cross_entropy_backward((double) label, pred) * sigmoid_backward(distance);
+    return embB * binary_cross_entropy_backward((double)label, pred) * sigmoid_backward(distance);
 }
 
 EmbeddingGradient cold_start(const Embedding &user, const Embedding &item) {
