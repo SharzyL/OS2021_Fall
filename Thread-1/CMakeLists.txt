@@ -19,6 +19,7 @@ FetchContent_MakeAvailable(
 find_package(Threads REQUIRED)
 find_package(fmt REQUIRED)
 find_package(glog REQUIRED)
+find_package(benchmark REQUIRED)
 
 include_directories(.)
 set(Lib lib/embedding.cc lib/instruction.cc lib/utils.cc lib/model.cc lib/operation.cc)
@@ -38,3 +39,6 @@ endforeach()
 
 add_executable(operation_test lib/operation_test.cc)
 target_link_libraries(operation_test lib fmt Threads::Threads gtest_main glog::glog)
+
+add_executable(q4_benchmark benchmark.cc)
+target_link_libraries(q4_benchmark benchmark fmt lib glog::glog)
