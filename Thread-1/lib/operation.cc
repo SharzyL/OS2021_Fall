@@ -130,20 +130,16 @@ void Worker::output_recommendation(const Embedding &recommendation) {
 void Worker::op_init_emb(int user_idx, const std::vector<int> &item_idx_list) {
     LOG(INFO) << fmt::format("init user={} {}", user_idx, item_idx_list);
     unique_lock lock(*user_locks_list[user_idx]);
-    for (auto item_idx : item_idx_list) {
-        (*item_locks_list[item_idx]).lock_shared();
-    }
 
     Embedding &user_emb = users[user_idx];
     for (int item_index : item_idx_list) {
+        shared_lock item_lock(*item_locks_list[item_index]);
         Embedding &item_emb = items[item_index];                     // read item
+        item_lock.unlock();
         EmbeddingGradient gradient = cold_start(user_emb, item_emb); // slow
         users.update_embedding(user_idx, gradient, 0.01);
     }
 
-    for (auto iter = item_idx_list.rbegin(); iter != item_idx_list.rend(); iter++) {
-        (*item_locks_list[*iter]).unlock_shared();
-    }
     LOG(INFO) << fmt::format("init user={} {} end", user_idx, item_idx_list);
 }
 

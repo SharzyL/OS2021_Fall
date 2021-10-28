@@ -25,13 +25,10 @@ EmbeddingGradient calc_gradient(const Embedding &embA, const Embedding &embB, in
     */
     double distance = similarity(embA, embB);
     double pred = sigmoid(distance);
-    double loss = binary_cross_entropy_backward((double)label, pred);
-    loss *= sigmoid_backward(distance);
-    auto gradA = Embedding(embB * loss);
 
     // Here we simulate a slow calculation
     a_slow_function(10);
-    return gradA;
+    return embB * binary_cross_entropy_backward((double) label, pred) * sigmoid_backward(distance);
 }
 
 EmbeddingGradient cold_start(const Embedding &user, const Embedding &item) {
