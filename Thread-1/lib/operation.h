@@ -38,6 +38,11 @@ protected:
     void op_init_emb(int user_idx, const std::vector<int> &item_idx_list);
     void op_update_emb(int user_idx, int item_idx, int label);
     void op_recommend(int user_idx, const std::vector<int> &item_idx_list);
+
+    Embedding get_user_emb(int idx);
+    Embedding get_item_emb(int idx);
+    void update_user_emb(int idx, const EmbeddingGradient &grad, double step);
+    void update_item_emb(int idx, const EmbeddingGradient &grad, double step);
     std::vector<std::unique_ptr<std::shared_mutex>> user_locks_list;
     std::vector<std::unique_ptr<std::shared_mutex>> item_locks_list;
     std::mutex printer_lock;
