@@ -19,7 +19,54 @@ template<class... Ts> overload(Ts...) -> overload<Ts...>;
 
 namespace proj1 {
 
-Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, const Instructions &instructions)
+// reference single-thread implementation
+void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, EmbeddingHolder &items, EmbeddingHolder* recommendations) {
+    switch (inst.order) {
+        case INIT_EMB: {
+            // We need to init the embedding
+            int length = users.get_emb_length();
+            int user_idx = users.emplace_back(Embedding(length));
+            Embedding& new_user = users[user_idx];
+            for (int item_index: inst.payloads) {
+                Embedding &item_emb = items[item_index];
+                // Call cold start for downstream applications, slow
+                EmbeddingGradient gradient = cold_start(new_user, item_emb);
+                users.update_embedding(user_idx, gradient, 0.01);
+            }
+            break;
+        }
+        case UPDATE_EMB: {
+            int user_idx = inst.payloads[0];
+            int item_idx = inst.payloads[1];
+            int label = inst.payloads[2];
+            Embedding &user = users[user_idx];
+            Embedding &item = items[item_idx];
+            EmbeddingGradient user_gradient = calc_gradient(user, item, label);
+            users.update_embedding(user_idx, user_gradient, 0.01);
+            EmbeddingGradient item_gradient = calc_gradient(item, user, label);
+            items.update_embedding(item_idx, item_gradient, 0.001);
+            break;
+        }
+        case RECOMMEND: {
+            int user_idx = inst.payloads[0];
+            Embedding &user = users[user_idx];
+            std::vector<std::reference_wrapper<Embedding>> item_pool;
+            for (unsigned int i = 2; i < inst.payloads.size(); ++i) {
+                int item_idx = inst.payloads[i];
+                item_pool.emplace_back(items[item_idx]);
+            }
+            const Embedding &recommendation = recommend(user, item_pool);
+            if (recommendations != nullptr) {
+                recommendations->emplace_back(recommendation);
+            } else {
+                recommendation.write_to_stdout();
+            }
+            break;
+        }
+    }
+}
+
+    Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, const Instructions &instructions)
     : users(users), items(items), instructions(instructions) {
     std::vector<Task> last_tasks;
 
@@ -40,15 +87,16 @@ Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, const Instruction
         if (inst.order == INIT_EMB) {
             user_locks_list.emplace_back(new std::shared_mutex);
 
-            int new_user_idx = users.append(Embedding(users.get_emb_length()));  // append user
+            int new_user_idx = users.emplace_back(Embedding(users.get_emb_length()));  // append user
 
             std::vector<int> item_idx_list;
             item_idx_list.reserve(inst.payloads.size() - 1);
             for (auto item_idx : inst.payloads) {
-                item_idx_list.push_back(item_idx);  // TODO: sort these
+                item_idx_list.push_back(item_idx);
             }
+            std::sort(item_idx_list.begin(), item_idx_list.end());
             InitTask t{new_user_idx, std::move(item_idx_list)};
-            normal_tasks.emplace_back(t);  // TODO: avoid copy here
+            normal_tasks.emplace_back(std::move(t));
 
         } else if (inst.order == RECOMMEND) {
             int user_idx = inst.payloads[0];
@@ -58,8 +106,9 @@ Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, const Instruction
             for (int i = 2; i < inst.payloads.size(); i++) {
                 item_idx_list.push_back(inst.payloads[i]);
             }
+            std::sort(item_idx_list.begin(), item_idx_list.end());
             RecommendTask t{user_idx, std::move(item_idx_list)};
-            tasks_in_epoch[epoch + 1].push_back(t);
+            tasks_in_epoch[epoch + 1].emplace_back(std::move(t));
 
         } else if (inst.order == UPDATE_EMB) {
             int user_idx = inst.payloads[0];
@@ -67,7 +116,7 @@ Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, const Instruction
             int label = inst.payloads[2];
             int epoch = inst.payloads.size() > 3 ? inst.payloads[3] : -1;
             UpdateTask t{user_idx, item_idx, label};
-            tasks_in_epoch[epoch].push_back(t);
+            tasks_in_epoch[epoch].emplace_back(t);  // trivially copyable, no need to move
         }
     }
 }

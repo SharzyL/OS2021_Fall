@@ -5,7 +5,7 @@
 
 namespace proj1 {
 
-Instruction::Instruction(std::string line) {
+Instruction::Instruction(const std::string &line) {
     std::stringstream ss(line);
     int data;
     ss >> data;
@@ -24,6 +24,8 @@ Instructions instr_from_file(const std::string &filename) {
             data.push_back(Instruction(line));
         }
         ifs.close();
+    } else {
+        throw std::runtime_error("Error opening file " + filename);
     }
     return data;
 }

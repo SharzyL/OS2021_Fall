@@ -8,13 +8,17 @@ cc_binary(
     copts = [
         "-std=c++17",
     ],
-    data = glob(["data/q0*"]),
+    data = [
+        "//data:q0.in",
+        "//data:q0_instruction.tsv",
+    ],
     linkopts = ["-pthread"],
     deps = [
         "//lib:embedding_lib",
         "//lib:instruction_lib",
         "//lib:model_lib",
         "//lib:operation_lib",
+        "@com_github_google_glog//:glog",
     ],
 )
 
@@ -36,12 +40,16 @@ cc_binary(
     copts = [
         "-std=c++17",
     ],
-    data = glob(["data/q1*"]),
+    data = [
+        "//data:q1.in",
+        "//data:q1_instruction.tsv",
+    ],
     linkopts = ["-pthread"],
     deps = [
         "//lib:embedding_lib",
         "//lib:instruction_lib",
         "//lib:operation_lib",
+        "@com_github_google_glog//:glog",
     ],
 )
 
@@ -53,13 +61,17 @@ cc_binary(
     copts = [
         "-std=c++17",
     ],
-    data = glob(["data/q2*"]),
+    data = [
+        "//data:q2.in",
+        "//data:q2_instruction.tsv",
+    ],
     linkopts = ["-pthread"],
     deps = [
         "//lib:embedding_lib",
         "//lib:instruction_lib",
         "//lib:model_lib",
         "//lib:operation_lib",
+        "@com_github_google_glog//:glog",
     ],
 )
 
@@ -71,13 +83,17 @@ cc_binary(
     copts = [
         "-std=c++17",
     ],
-    data = glob(["data/q3*"]),
+    data = [
+        "//data:q3.in",
+        "//data:q3_instruction.tsv",
+    ],
     linkopts = ["-pthread"],
     deps = [
         "//lib:embedding_lib",
         "//lib:instruction_lib",
         "//lib:model_lib",
         "//lib:operation_lib",
+        "@com_github_google_glog//:glog",
     ],
 )
 
@@ -89,13 +105,17 @@ cc_binary(
     copts = [
         "-std=c++17",
     ],
-    data = glob(["data/q4*"]),
+    data = [
+        "//data:q4.in",
+        "//data:q4_instruction.tsv",
+    ],
     linkopts = ["-pthread"],
     deps = [
         "//lib:embedding_lib",
         "//lib:instruction_lib",
         "//lib:model_lib",
         "//lib:operation_lib",
+        "@com_github_google_glog//:glog",
     ],
 )
 

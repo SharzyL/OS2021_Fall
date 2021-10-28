@@ -18,6 +18,8 @@
 
 namespace proj1 {
 
+void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, EmbeddingHolder &items, EmbeddingHolder* recommendations=nullptr);
+
 class Worker {
 public:
     using unique_lock = std::unique_lock<std::shared_mutex>;

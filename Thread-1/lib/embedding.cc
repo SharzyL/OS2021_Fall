@@ -62,18 +62,17 @@ void Embedding::update(const Embedding &gradient, double stepsize) {
     }
 }
 
-std::string Embedding::to_string() const {
-    std::string res;
-    for (int i = 0; i < this->length; ++i) {
-        if (i > 0) res += ',';
-        res += std::to_string(this->data[i]);
+std::ostream &operator<<(std::ostream &output, const Embedding &emb) {
+    for (int i = 0; i < emb.length; ++i) {
+        if (i > 0) output << ",";
+        output << emb.data[i];
     }
-    return res;
-}
+    return output;
+};
 
 void Embedding::write_to_stdout() const {
     std::string prefix("[OUTPUT]");
-    std::cout << prefix << this->to_string() << '\n';
+    std::cout << prefix << *this << '\n';
 }
 
 Embedding Embedding::operator+(const Embedding &another) const {
@@ -156,14 +155,11 @@ double *Embedding::get_data() const { return this->data; }
 int Embedding::get_length() const { return (int) this->length; }
 
 EmbeddingHolder::EmbeddingHolder(const std::string& filename) {
-    this->emb_matx = proj1::EmbeddingHolder::read(filename);
-}
-
-EmbeddingMatrix EmbeddingHolder::read(const std::string& filename) {
-    std::string line;
     std::ifstream ifs(filename);
     int length = 0;
-    EmbeddingMatrix matrix;
+    std::vector<Embedding> matrix;
+
+    std::string line;
     if (ifs.is_open()) {
         while (std::getline(ifs, line)) {
             if (length == 0) {
@@ -176,39 +172,32 @@ EmbeddingMatrix EmbeddingHolder::read(const std::string& filename) {
         }
         ifs.close();
     } else {
-        throw std::runtime_error("Error opening file " + filename + "!");
+        throw std::runtime_error("Error opening file " + filename);
     }
-    return matrix;
+    this->emb_matx = std::move(matrix);
 }
 
-int EmbeddingHolder::append(const Embedding &data) {
-    size_t idx = this->emb_matx.size();
-    this->emb_matx.emplace_back(data);
-    return (int) idx;
+std::ostream& operator<<(std::ostream &output, const EmbeddingHolder &holder) {
+    for (const auto &emb: holder.emb_matx) {
+        output << emb << '\n';
+    }
+    return output;
 }
 
-int EmbeddingHolder::append(Embedding &&data) {
-    size_t idx = this->emb_matx.size();
-    this->emb_matx.emplace_back(std::move(data));
-    return (int) idx;
-}
-
-void EmbeddingHolder::write(const std::string& filename) {
+void EmbeddingHolder::write(const std::string& filename) const {
     std::ofstream ofs(filename);
     if (ofs.is_open()) {
-        for (const auto &emb: this->emb_matx) {
-            ofs << emb.to_string() << '\n';
-        }
+        ofs << *this;
         ofs.close();
     } else {
         throw std::runtime_error("Error opening file " + filename + "!");
     }
 }
 
-void EmbeddingHolder::write_to_stdout() {
+void EmbeddingHolder::write_to_stdout() const {
     std::string prefix("[OUTPUT]");
     for (const auto &emb: this->emb_matx) {
-        std::cout << prefix << emb.to_string() << '\n';
+        std::cout << prefix << emb << '\n';
     }
 }
 
@@ -216,7 +205,7 @@ void EmbeddingHolder::update_embedding(int idx, const EmbeddingGradient &gradien
     this->emb_matx[idx].update(gradient, stepsize);
 }
 
-bool EmbeddingHolder::operator==(const EmbeddingHolder &another) {
+bool EmbeddingHolder::operator==(const EmbeddingHolder &another) const {
     if (this->get_n_embeddings() != another.emb_matx.size())
         return false;
     for (int i = 0; i < (int)this->emb_matx.size(); ++i) {
@@ -227,14 +216,16 @@ bool EmbeddingHolder::operator==(const EmbeddingHolder &another) {
     return true;
 }
 
-unsigned int EmbeddingHolder::get_n_embeddings() { return this->emb_matx.size(); }
+int EmbeddingHolder::get_n_embeddings() const {
+    return (int) this->emb_matx.size();
+}
 
 Embedding& EmbeddingHolder::operator[](int idx) {
     return this->emb_matx[idx];
 }
 
-int EmbeddingHolder::get_emb_length() {
-    return this->emb_matx.empty() ? 0: (*this)[0].get_length();
+int EmbeddingHolder::get_emb_length() const {
+    return this->emb_matx.empty() ? 0: (*this).emb_matx.at(0).get_length();
 }
 
 } // namespace proj1

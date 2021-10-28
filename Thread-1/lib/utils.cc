@@ -5,9 +5,6 @@
 #include <thread>
 #include "utils.h"
 
-#include <glog/logging.h>
-#include <fmt/format.h>
-
 namespace proj1 {
 
 void a_slow_function(int seconds) {

@@ -7,8 +7,9 @@
 
 namespace proj1 {
 
-class Embedding{
+class Embedding {
 public:
+    Embedding() = default;
     explicit Embedding(int);  // Random init an embedding
     Embedding(int, double*, bool do_copy = true);
     Embedding(int, const std::string &);
@@ -22,7 +23,8 @@ public:
     [[nodiscard]] double* get_data() const;
     [[nodiscard]] int get_length() const;
     void update(const Embedding &, double);
-    [[nodiscard]] std::string to_string() const;
+
+    friend std::ostream &operator<<(std::ostream &output, const Embedding &holder);
     void write_to_stdout() const;
 
     // Operators
@@ -38,28 +40,34 @@ public:
     bool operator!=(const Embedding&) const;
 private:
     int length = 0;
-    double *data;
+    double *data = nullptr;
 };
 
-using EmbeddingMatrix = std::vector<Embedding>;
 using EmbeddingGradient = Embedding;
 
-class EmbeddingHolder{
+class EmbeddingHolder {
 public:
     EmbeddingHolder() = default;
-    explicit EmbeddingHolder(const std::string& filename);
-    static EmbeddingMatrix read(const std::string&);
-    void write_to_stdout();
-    void write(const std::string& filename);
-    int append(const Embedding &embedding);
-    int append(Embedding &&embedding);
+    explicit EmbeddingHolder(const std::string &filename);
+    explicit EmbeddingHolder(std::vector<Embedding> emb_vector): emb_matx(std::move(emb_vector)) {};
+
+    friend std::ostream &operator<<(std::ostream &output, const EmbeddingHolder &holder);
+    void write_to_stdout() const;
+    void write(const std::string& filename) const;
+
+    template<typename ...T>
+    int emplace_back(T&&... args) {  // universal reference
+        emb_matx.emplace_back(std::forward<T>(args)...);
+        return (int) emb_matx.size() - 1;
+    }
+
     void update_embedding(int, const EmbeddingGradient &, double);
-    unsigned int get_n_embeddings();
-    int get_emb_length();
-    bool operator==(const EmbeddingHolder&);
+    [[nodiscard]] int get_n_embeddings() const;
+    [[nodiscard]] int get_emb_length() const;
+    bool operator==(const EmbeddingHolder&) const;
     Embedding& operator[](int idx);
 private:
-    EmbeddingMatrix emb_matx;
+    std::vector<Embedding> emb_matx;
 };
 
 } // namespace proj1

@@ -77,19 +77,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "instruction_lib_test",
-    size = "small",
-    srcs = ["instruction_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    deps = [
-        ":instruction_lib",
-        "@gtest//:gtest_main",
-    ],
-)
-
 cc_library(
     name = "model_lib",
     srcs = [
@@ -142,5 +129,21 @@ cc_library(
         ":instruction_lib",
         ":model_lib",
         ":utils_lib",
+        "@fmt",
+    ],
+)
+
+cc_test(
+    name = "operation_lib_test",
+    size = "large",
+    srcs = ["operation_test.cc"],
+    copts = [
+        "-std=c++17",
+    ],
+    data = ["//data:q1.in"],
+    deps = [
+        "//lib:operation_lib",
+        "@com_github_google_glog//:glog",
+        "@gtest//:gtest_main",
     ],
 )

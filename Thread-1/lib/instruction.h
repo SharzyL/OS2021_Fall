@@ -13,7 +13,7 @@ enum InstructionOrder {
 };
 
 struct Instruction {
-    explicit Instruction(std::string);
+    explicit Instruction(const std::string&);
     InstructionOrder order;
     std::vector<int> payloads;
 };
