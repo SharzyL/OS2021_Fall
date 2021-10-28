@@ -1,8 +1,8 @@
 #ifndef THREAD_LIB_MODEL_H_
 #define THREAD_LIB_MODEL_H_
 
-#include <vector>
 #include "embedding.h"
+#include <vector>
 
 namespace proj1 {
 
@@ -15,7 +15,7 @@ EmbeddingGradient calc_gradient(const Embedding &entityA, const Embedding &entit
 
 EmbeddingGradient cold_start(const Embedding &newUser, const Embedding &item);
 
-const Embedding& recommend(const Embedding &user, const std::vector<std::reference_wrapper<Embedding>>& items);
+const Embedding &recommend(const Embedding &user, const std::vector<std::reference_wrapper<Embedding>> &items);
 
 } // namespace proj1
 

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
+#include <string> // string
 #include <vector>
-#include <string>   // string
 
 #include "lib/embedding.h"
 #include "lib/instruction.h"
@@ -17,7 +17,7 @@ class WorkerForTest : public Worker {
 public:
     WorkerForTest(EmbeddingHolder &users, EmbeddingHolder &items, const Instructions &instructions,
                   EmbeddingHolder *recommendations)
-            : Worker(users, items, instructions), recommendations(recommendations) {}
+        : Worker(users, items, instructions), recommendations(recommendations) {}
 
     void output_recommendation(const Embedding &recommendation) override {
         std::unique_lock<std::mutex> print_guard(printer_lock);
@@ -34,13 +34,14 @@ bool testWorker(const std::string &data_file, const std::vector<Instructions> &i
     WorkerForTest worker(users_test, items_test, instr_test, &recom_test);
     worker.work();
 
-    for (const auto &instr_ref: instr_refs) {
+    for (const auto &instr_ref : instr_refs) {
         EmbeddingHolder recom_ref;
         EmbeddingHolder users_ref(data_file), items_ref(data_file);
-        for (const auto &instr: instr_ref) {
+        for (const auto &instr : instr_ref) {
             run_one_instruction(instr, users_ref, items_ref, &recom_ref);
         }
-        if (recom_test == recom_ref && users_test == users_ref && items_test == items_ref) return true;
+        if (recom_test == recom_ref && users_test == users_ref && items_test == items_ref)
+            return true;
     }
     return false;
 }
@@ -155,10 +156,10 @@ TEST(TestRecommendAndUpdate, Epoch2) {
 }
 
 TEST(TestWorkload, Epoch) {
-    std::string instr1 = "2 0 -1 0 1";  // epoch -1
-    std::string instr2 = "1 0 0 0 0";   // epoch 0
-    std::string instr3 = "1 0 0 1 1";   // epoch 1
-    std::string instr4 = "2 1 2 0 1";   // epoch 2
+    std::string instr1 = "2 0 -1 0 1"; // epoch -1
+    std::string instr2 = "1 0 0 0 0";  // epoch 0
+    std::string instr3 = "1 0 0 1 1";  // epoch 1
+    std::string instr4 = "2 1 2 0 1";  // epoch 2
     std::string instr_seq1 = "";
     std::string instr_seq2 = "";
     std::string instr_seq3 = "";

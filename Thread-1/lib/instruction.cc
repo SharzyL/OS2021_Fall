@@ -1,7 +1,7 @@
-#include <string>
-#include <sstream>
-#include <fstream>
 #include "instruction.h"
+#include <fstream>
+#include <sstream>
+#include <string>
 
 namespace proj1 {
 
@@ -9,7 +9,7 @@ Instruction::Instruction(const std::string &line) {
     std::stringstream ss(line);
     int data;
     ss >> data;
-    this->order = (InstructionOrder) data;
+    this->order = (InstructionOrder)data;
     while (ss >> data) {
         this->payloads.push_back(data);
     }
@@ -20,7 +20,7 @@ Instructions instr_from_file(const std::string &filename) {
     std::string line;
     Instructions data;
     if (ifs.is_open()) {
-        while(std::getline(ifs, line)) {
+        while (std::getline(ifs, line)) {
             data.push_back(Instruction(line));
         }
         ifs.close();
@@ -34,7 +34,7 @@ Instructions instr_from_str(const std::string &str) {
     std::stringstream st(str);
     std::string line;
     Instructions data;
-    while(std::getline(st, line)) {
+    while (std::getline(st, line)) {
         data.push_back(Instruction(line));
     }
     return data;

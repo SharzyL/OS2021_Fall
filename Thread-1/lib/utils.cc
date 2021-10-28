@@ -1,19 +1,15 @@
-#include <cmath>
-#include <string>
-#include <iostream>
-#include <chrono>
-#include <thread>
 #include "utils.h"
+#include <chrono>
+#include <cmath>
+#include <iostream>
+#include <string>
+#include <thread>
 
 namespace proj1 {
 
-void a_slow_function(int seconds) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(seconds));
-}
+void a_slow_function(int seconds) { std::this_thread::sleep_for(std::chrono::milliseconds(seconds) * 10); }
 
-double sigmoid(double x) {
-    return 1.0 / (1.0 + exp(-x));
-}
+double sigmoid(double x) { return 1.0 / (1.0 + exp(-x)); }
 
 double sigmoid_backward(double x) {
     double y = sigmoid(x);
@@ -22,8 +18,7 @@ double sigmoid_backward(double x) {
 
 double binary_cross_entropy(double y_true, double y_pred) {
     double eps = 1e-8;
-    return y_true * log(eps + y_pred) \
-        + (1.0 - y_true) * log(1.0 - y_pred + eps);
+    return y_true * log(eps + y_pred) + (1.0 - y_true) * log(1.0 - y_pred + eps);
 }
 
 double binary_cross_entropy_backward(double y_true, double y_pred) {
@@ -31,10 +26,7 @@ double binary_cross_entropy_backward(double y_true, double y_pred) {
     return (y_true - y_pred) / (eps + (1.0 - y_pred) * y_pred);
 }
 
-AutoTimer::AutoTimer(std::string name) : 
-        m_name(std::move(name)),
-        m_beg(std::chrono::high_resolution_clock::now()) { 
-    }
+AutoTimer::AutoTimer(std::string name) : m_name(std::move(name)), m_beg(std::chrono::high_resolution_clock::now()) {}
 
 AutoTimer::~AutoTimer() {
     auto end = std::chrono::high_resolution_clock::now();

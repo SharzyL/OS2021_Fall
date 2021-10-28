@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
     proj1::Instructions instructions = proj1::instr_from_file("data/q0_instruction.tsv");
 
     // Run all the instructions
-    for (const auto &inst: instructions) {
+    for (const auto &inst : instructions) {
         proj1::run_one_instruction(inst, users, items);
     }
 

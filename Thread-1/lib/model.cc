@@ -1,8 +1,8 @@
 #include <cassert>
 
+#include "embedding.h"
 #include "model.h"
 #include "utils.h"
-#include "embedding.h"
 
 namespace proj1 {
 
@@ -25,7 +25,7 @@ EmbeddingGradient calc_gradient(const Embedding &embA, const Embedding &embB, in
     */
     double distance = similarity(embA, embB);
     double pred = sigmoid(distance);
-    double loss = binary_cross_entropy_backward((double) label, pred);
+    double loss = binary_cross_entropy_backward((double)label, pred);
     loss *= sigmoid_backward(distance);
     auto gradA = Embedding(embB * loss);
 
@@ -38,11 +38,11 @@ EmbeddingGradient cold_start(const Embedding &user, const Embedding &item) {
     // Do some downstream work, e.g. let the user watch this video
     a_slow_function(10);
     // Then we collect a label, e.g. whether the user finished watching the video
-    int label = item.get_data()[0] > 1e-8? 0: 1;
+    int label = item.get_data()[0] > 1e-8 ? 0 : 1;
     return calc_gradient(user, item, label);
 }
 
-const Embedding& recommend(const Embedding &user, const std::vector<std::reference_wrapper<Embedding>>& items) {
+const Embedding &recommend(const Embedding &user, const std::vector<std::reference_wrapper<Embedding>> &items) {
     assert(!items.empty());
     double sim, maxSim = -std::numeric_limits<double>::max();
     int max_item_idx;

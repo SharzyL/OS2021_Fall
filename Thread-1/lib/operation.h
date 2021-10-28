@@ -5,20 +5,21 @@
 #ifndef THREAD_1_OPERATION_H
 #define THREAD_1_OPERATION_H
 
+#include <map>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
 #include <thread>
-#include <map>
 #include <variant>
 
-#include "model.h"
 #include "embedding.h"
 #include "instruction.h"
+#include "model.h"
 
 namespace proj1 {
 
-void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, EmbeddingHolder &items, EmbeddingHolder* recommendations=nullptr);
+void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, EmbeddingHolder &items,
+                         EmbeddingHolder *recommendations = nullptr);
 
 class Worker {
 public:
@@ -64,5 +65,5 @@ protected:
     void execute_task(const Task &t);
 };
 
-} // namespace proj
-#endif //THREAD_1_OPERATION_H
+} // namespace proj1
+#endif // THREAD_1_OPERATION_H
