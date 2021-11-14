@@ -1,17 +1,12 @@
 #ifndef BOAT_GRADER_H_
 #define BOAT_GRADER_H_
 
-#include<stdio.h>
 #include <iostream>
-
+#include <stdio.h>
 
 namespace proj2 {
-	
-enum BOAT_ERROR {
-    CONDITION_MISMATCH = 0,
-    ADULT_RIDE = 1,
-    WRONG_ANSWER = 2
-};	
+
+enum BOAT_ERROR { CONDITION_MISMATCH = 0, ADULT_RIDE = 1, WRONG_ANSWER = 2 };
 
 class BoatGrader {
 
@@ -28,26 +23,24 @@ class BoatGrader {
      * are a good idea or even allowed.
      */
 public:
-     
-    template <class T>
-	inline void boatAssert(bool condition, char const *msg, T error) {
-	    if (!condition) {
-	        std::cerr << msg << std::endl;
-	        error_occured = true;
-	        throw error;
-	    }
-	}
-	
-	BoatGrader(int i, int j);
-   ~BoatGrader(){};
-	
-	void initializeChild();
-	
-	void initializeAdult();
+    template <class T> inline void boatAssert(bool condition, char const *msg, T error) {
+        if (!condition) {
+            std::cerr << msg << std::endl;
+            error_occured = true;
+            throw error;
+        }
+    }
+
+    BoatGrader(int i, int j);
+    ~BoatGrader(){};
+
+    void initializeChild();
+
+    void initializeAdult();
 
     /* ChildRowToMolokai should be called when a child pilots the boat
        from Oahu to Molokai */
-    void ChildRowToMolokai() ;
+    void ChildRowToMolokai();
 
     /* ChildRowToOahu should be called when a child pilots the boat
        from Molokai to Oahu*/
@@ -55,39 +48,39 @@ public:
 
     /* ChildRideToMolokai should be called when a child not piloting
        the boat disembarks on Molokai */
-    void ChildRideToMolokai() ;
+    void ChildRideToMolokai();
 
     /* ChildRideToOahu should be called when a child not piloting
        the boat disembarks on Oahu */
-    void ChildRideToOahu() ;
+    void ChildRideToOahu();
 
     /* AdultRowToMolokai should be called when a adult pilots the boat
        from Oahu to Molokai */
-    void AdultRowToMolokai() ;
+    void AdultRowToMolokai();
 
     /* AdultRowToOahu should be called when a adult pilots the boat
        from Molokai to Oahu */
-    void AdultRowToOahu() ;
+    void AdultRowToOahu();
 
     /* AdultRideToMolokai should be called when an adult not piloting
        the boat disembarks on Molokai */
-    void AdultRideToMolokai() ;
+    void AdultRideToMolokai();
 
     /* AdultRideToOahu should be called when an adult not piloting
        the boat disembarks on Oahu */
-    void AdultRideToOahu() ;
-    
+    void AdultRideToOahu();
+
     int adultsLeft();
-    
+
     int childrenLeft();
-    
+
     bool passed();
-    
+
     int points();
-    
+
 private:
-	int childrenInit;
-	int adultInit;
+    int childrenInit;
+    int adultInit;
     int children_on_oahu;
     int adults_on_oahu;
     int children_on_molokai;
@@ -96,9 +89,7 @@ private:
     int passenger_to_oahu;
     bool boat_on_oahu;
     bool error_occured;
-    
-    
 };
 
-}
+} // namespace proj2
 #endif // BOAT_GRADER_H_
