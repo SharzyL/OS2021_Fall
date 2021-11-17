@@ -129,6 +129,7 @@ cc_library(
         ":instruction_lib",
         ":model_lib",
         ":utils_lib",
+        "@com_github_google_glog//:glog",
         "@fmt",
     ],
 )
