@@ -11,9 +11,7 @@
 namespace proj2 {
 class Boat {
 public:
-    Boat();
-    ~Boat(){};
-    void begin(int, int, BoatGrader *);
+    static void begin(int, int, BoatGrader *);
 };
 } // namespace proj2
 

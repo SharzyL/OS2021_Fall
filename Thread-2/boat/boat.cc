@@ -7,11 +7,11 @@
 
 namespace proj2 {
 
-Boat::Boat() {}
+using namespace std::chrono_literals;
 
 class Environment {
 public:
-    Environment(BoatGrader &grader, int num_persons): grader(grader), not_landed(num_persons) {};
+    explicit Environment(BoatGrader &grader): grader(grader) {};
 
     void child_run() {
         auto guard = std::unique_lock<std::mutex>(boat_mutex);
@@ -23,12 +23,9 @@ public:
                 // grab the boat to monokai
                 owc ++;
                 if (self_not_landed) {
-                    not_landed --;
-                    if (not_landed == 0) {
-                        all_landed.notify_all();
-                    } else {
-                        all_landed.wait(guard);
-                    }
+                    guard.unlock();
+                    std::this_thread::sleep_for(100ms);
+                    guard.lock();
                     self_not_landed = false;
                 }
 
@@ -83,12 +80,9 @@ public:
         auto guard = std::unique_lock<std::mutex>(boat_mutex);
         // grab the boat to monokai
         owa++;
-        not_landed --;
-        if (not_landed == 0) {
-            all_landed.notify_all();
-        } else {
-            all_landed.wait(guard);
-        }
+        guard.unlock();
+        std::this_thread::sleep_for(100ms);
+        guard.lock();
 
         boat_on_oahu.wait(guard, [&, this] {
             bool boat_not_full = ac + aa == 0;
@@ -107,9 +101,6 @@ public:
 private:
     BoatGrader &grader;
 
-    int not_landed;
-    std::condition_variable all_landed;
-
     int owc = 0;  // oahu waiting children
     int owa = 0;  // oahu waiting adult
     int ac = 0;   // active children (ready to embark)
@@ -127,8 +118,8 @@ private:
 
 void Boat::begin(int a, int b, BoatGrader *bg) {
     std::vector<std::thread> jobs;
+    Environment e(*bg);
     jobs.reserve(a + b);
-    Environment e(*bg, a + b);
     for (int i = 0; i < a; i++) {
         jobs.emplace_back(&Environment::adult_run, &e);
     }
@@ -139,4 +130,5 @@ void Boat::begin(int a, int b, BoatGrader *bg) {
         job.join();
     }
 }
+
 } // namespace proj2
