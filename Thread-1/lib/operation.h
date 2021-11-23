@@ -27,7 +27,9 @@ public:
     EmbeddingHolder &items;
     const Instructions &instructions;
 
-    Worker(EmbeddingHolder &users, EmbeddingHolder &items, const Instructions &instructions);
+    bool work_inplace;
+
+    Worker(EmbeddingHolder &users, EmbeddingHolder &items, const Instructions &instructions, bool work_inplace=false);
     void work();
 
 protected:

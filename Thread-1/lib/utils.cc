@@ -7,7 +7,7 @@
 
 namespace proj1 {
 
-void a_slow_function(int seconds) { std::this_thread::sleep_for(std::chrono::seconds(seconds)); }
+void a_slow_function(int seconds) { std::this_thread::sleep_for(std::chrono::seconds(seconds) / 100.0); }
 
 double sigmoid(double x) { return 1.0 / (1.0 + exp(-x)); }
 

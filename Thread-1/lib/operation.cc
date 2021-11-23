@@ -68,8 +68,8 @@ void run_one_instruction(const Instruction &inst, EmbeddingHolder &users, Embedd
     }
 }
 
-Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, const Instructions &instructions)
-    : users(users), items(items), instructions(instructions) {
+Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, const Instructions &instructions, bool work_inplace)
+    : users(users), items(items), instructions(instructions), work_inplace(work_inplace) {
     std::vector<Task> last_tasks;
 
     // initialize locks for items
@@ -105,7 +105,7 @@ Worker::Worker(EmbeddingHolder &users, EmbeddingHolder &items, const Instruction
             int epoch = inst.payloads[1] + 1;
             std::vector<int> item_idx_list;
             item_idx_list.reserve(inst.payloads.size() - 2);
-            for (int i = 2; i < inst.payloads.size(); i++) {
+            for (size_t i = 2; i < inst.payloads.size(); i++) {
                 item_idx_list.push_back(inst.payloads[i]);
             }
             std::sort(item_idx_list.begin(), item_idx_list.end());
@@ -153,25 +153,56 @@ void Worker::op_init_emb(int user_idx, const std::vector<int> &item_idx_list) {
 
 void Worker::op_update_emb(int user_idx, int item_idx, int label) {
     LOG(INFO) << fmt::format("update user={} item={} label={}", user_idx, item_idx, label);
-    const Embedding user = get_user_emb(user_idx);
-    const Embedding item = get_item_emb(item_idx);
-    auto user_gradient_future = std::async(std::launch::async, calc_gradient, user, item, label); // slow
-    auto item_gradient_future = std::async(std::launch::async, calc_gradient, item, user, label); // slow
-    update_user_emb(user_idx, user_gradient_future.get(), 0.01);                                  // write user
-    update_item_emb(item_idx, item_gradient_future.get(), 0.001);                                 // write item
+    if (work_inplace) {
+        unique_lock user_lock(*user_locks_list[user_idx]);
+        unique_lock item_lock(*item_locks_list[item_idx]);
+        Embedding &user = users[user_idx];
+        Embedding &item = items[item_idx];
+        auto user_gradient_future = std::async(std::launch::async, calc_gradient, user, item, label); // slow
+        auto item_gradient_future = std::async(std::launch::async, calc_gradient, item, user, label); // slow
+        users[user_idx].update(user_gradient_future.get(), 0.001);
+        items[item_idx].update(item_gradient_future.get(), 0.001);
+    } else {
+        const Embedding user = get_user_emb(user_idx);
+        const Embedding item = get_item_emb(item_idx);
+        auto user_gradient_future = std::async(std::launch::async, calc_gradient, user, item, label); // slow
+        auto item_gradient_future = std::async(std::launch::async, calc_gradient, item, user, label); // slow
+        update_user_emb(user_idx, user_gradient_future.get(), 0.01);                              // write user
+        update_item_emb(item_idx, item_gradient_future.get(), 0.001);                             // write item
+    }
     LOG(INFO) << fmt::format("update user={} item={} label={} end", user_idx, item_idx, label);
 }
 
 void Worker::op_recommend(int user_idx, const std::vector<int> &item_idx_list) {
     LOG(INFO) << fmt::format("recommend user={} {}", user_idx, item_idx_list);
-    Embedding user = get_user_emb(user_idx); // read user
-    std::vector<Embedding> item_pool;
-    item_pool.reserve(item_idx_list.size());
-    for (auto item_idx : item_idx_list) {
-        item_pool.emplace_back(get_item_emb(item_idx)); // read item
+    if (work_inplace) {
+        auto item_idx_list_cpy = item_idx_list;  // make a copy
+        std::sort(item_idx_list_cpy.begin(), item_idx_list_cpy.end());
+        shared_lock user_lock(*user_locks_list[user_idx]);
+        for (auto item_idx : item_idx_list_cpy) {
+            item_locks_list[item_idx]->lock();
+        }
+        std::vector<Embedding> item_pool;
+        item_pool.reserve(item_idx_list.size());
+        for (auto item_idx : item_idx_list) {
+            item_pool.emplace_back(items[item_idx]); // read item
+        }
+        Embedding &user = users[user_idx];
+        const Embedding &recommendation = recommend(user, item_pool);
+        output_recommendation(recommendation);
+        for (auto item_idx : item_idx_list_cpy) {
+            item_locks_list[item_idx]->unlock();
+        }
+    } else {
+        std::vector<Embedding> item_pool;
+        item_pool.reserve(item_idx_list.size());
+        for (auto item_idx : item_idx_list) {
+            item_pool.emplace_back(get_item_emb(item_idx)); // read item
+        }
+        Embedding user = get_user_emb(user_idx); // read user
+        const Embedding &recommendation = recommend(user, item_pool);
+        output_recommendation(recommendation);
     }
-    const Embedding &recommendation = recommend(user, item_pool);
-    output_recommendation(recommendation);
     LOG(INFO) << fmt::format("recommend user={} {} end", user_idx, item_idx_list);
 }
 

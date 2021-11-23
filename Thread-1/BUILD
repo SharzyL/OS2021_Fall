@@ -5,9 +5,6 @@ cc_binary(
     srcs = [
         "q0.cc",
     ],
-    copts = [
-        "-std=c++17",
-    ],
     data = glob(["data/q0*"]),
     linkopts = ["-pthread"],
     deps = [
@@ -24,18 +21,12 @@ cc_binary(
     srcs = [
         "format.cc",
     ],
-    copts = [
-        "-std=c++17",
-    ],
 )
 
 cc_binary(
     name = "q1",
     srcs = [
         "q1.cc",
-    ],
-    copts = [
-        "-std=c++17",
     ],
     data = glob(["data/q1*"]),
     linkopts = ["-pthread"],
@@ -51,9 +42,6 @@ cc_binary(
     name = "q2",
     srcs = [
         "q2.cc",
-    ],
-    copts = [
-        "-std=c++17",
     ],
     data = glob(["data/q2*"]),
     linkopts = ["-pthread"],
@@ -71,9 +59,6 @@ cc_binary(
     srcs = [
         "q3.cc",
     ],
-    copts = [
-        "-std=c++17",
-    ],
     data = glob(["data/q3*"]),
     linkopts = ["-pthread"],
     deps = [
@@ -90,8 +75,21 @@ cc_binary(
     srcs = [
         "q4.cc",
     ],
-    copts = [
-        "-std=c++17",
+    data = glob(["data/q4*"]),
+    linkopts = ["-pthread"],
+    deps = [
+        "//lib:embedding_lib",
+        "//lib:instruction_lib",
+        "//lib:model_lib",
+        "//lib:operation_lib",
+        "@com_github_google_glog//:glog",
+    ],
+)
+
+cc_binary(
+    name = "q5",
+    srcs = [
+        "q5.cc",
     ],
     data = glob(["data/q4*"]),
     linkopts = ["-pthread"],
@@ -110,7 +108,6 @@ cc_test(
     srcs = ["benchmark.cc"],
     copts = [
         "-O3",
-        "-std=c++17",
     ],
     data = glob(["data/*"]),
     linkopts = ["-pthread"],

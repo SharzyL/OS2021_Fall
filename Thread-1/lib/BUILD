@@ -8,9 +8,6 @@ cc_library(
     hdrs = [
         "utils.h",
     ],
-    copts = [
-        "-std=c++17",
-    ],
     visibility = [
         "//visibility:public",
     ],
@@ -20,9 +17,6 @@ cc_test(
     name = "utils_lib_test",
     size = "small",
     srcs = ["util_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
     deps = [
         ":utils_lib",
         "@gtest//:gtest_main",
@@ -37,9 +31,6 @@ cc_library(
     hdrs = [
         "embedding.h",
     ],
-    copts = [
-        "-std=c++17",
-    ],
     visibility = [
         "//visibility:public",
     ],
@@ -52,9 +43,6 @@ cc_test(
     name = "embedding_lib_test",
     size = "small",
     srcs = ["embedding_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
     deps = [
         ":embedding_lib",
         "@gtest//:gtest_main",
@@ -69,9 +57,6 @@ cc_library(
     hdrs = [
         "instruction.h",
     ],
-    copts = [
-        "-std=c++17",
-    ],
     visibility = [
         "//visibility:public",
     ],
@@ -84,9 +69,6 @@ cc_library(
     ],
     hdrs = [
         "model.h",
-    ],
-    copts = [
-        "-std=c++17",
     ],
     visibility = [
         "//visibility:public",
@@ -101,9 +83,6 @@ cc_test(
     name = "model_lib_test",
     size = "large",
     srcs = ["model_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
     deps = [
         ":model_lib",
         "@gtest//:gtest_main",
@@ -117,9 +96,6 @@ cc_library(
     ],
     hdrs = [
         "operation.h",
-    ],
-    copts = [
-        "-std=c++17",
     ],
     visibility = [
         "//visibility:public",
@@ -138,9 +114,6 @@ cc_test(
     name = "operation_lib_test",
     size = "large",
     srcs = ["operation_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
     data = ["//data:q1.in"],
     deps = [
         "//lib:operation_lib",
