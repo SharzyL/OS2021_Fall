@@ -1,6 +1,5 @@
 #include "thread_manager.h"
 
-
 namespace proj2 {
 
 void ThreadManager::kill(std::thread::id id) {
@@ -13,12 +12,12 @@ void ThreadManager::kill(std::thread::id id) {
     this->running_threads[id]->detach();
 }
 
-std::thread* ThreadManager::rerun(std::thread::id id) {
+std::thread *ThreadManager::rerun(std::thread::id id) {
     if (this->running_status[id]) {
         // The thread is still running, call kill first or handle error here?
     }
     // The parameters are recorded in the lambda functions, just call it
-    return this->new_thread([this, id] {this->functions[id]();});
+    return this->new_thread([this, id] { this->functions[id](); });
 }
 
-}
+} // namespace proj2

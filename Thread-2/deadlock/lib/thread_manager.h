@@ -1,9 +1,9 @@
 #ifndef DEADLOCK_LIB_THREAD_MANAGER_H_
 #define DEADLOCK_LIB_THREAD_MANAGER_H_
 
+#include <functional>
 #include <map>
 #include <thread>
-#include <functional>
 
 namespace proj2 {
 
@@ -12,19 +12,18 @@ class ThreadManager {
 public:
     ThreadManager() {}
     void kill(std::thread::id);
-    std::thread* rerun(std::thread::id);
-    template <class Fn, class... Args>
-    std::thread* new_thread(Fn&& fn, Args&&... args);
+    std::thread *rerun(std::thread::id);
+    template <class Fn, class... Args> std::thread *new_thread(Fn &&fn, Args &&...args);
     bool is_killed(std::thread::id id) { return !running_status[id]; }
+
 private:
     std::map<std::thread::id, bool> running_status;
-    std::map<std::thread::id, std::thread*> running_threads;
-    std::map<std::thread::id, std::function<void()> > functions; 
+    std::map<std::thread::id, std::thread *> running_threads;
+    std::map<std::thread::id, std::function<void()>> functions;
 };
 
-template <class Fn, class... Args>
-std::thread* ThreadManager::new_thread(Fn&& fn, Args&&... args) {
-    std::thread* th = new std::thread(fn, args...);
+template <class Fn, class... Args> std::thread *ThreadManager::new_thread(Fn &&fn, Args &&...args) {
+    std::thread *th = new std::thread(fn, args...);
 
     // Record this thread
     this->running_status[th->get_id()] = true;
@@ -38,6 +37,6 @@ std::thread* ThreadManager::new_thread(Fn&& fn, Args&&... args) {
     return th;
 }
 
-}  // namespce: proj2
+} // namespace proj2
 
 #endif
