@@ -58,8 +58,8 @@ int main(int argc, char *argv[]) {
     std::ifstream ifs(datafile);
     if (!ifs.is_open())
         return 1;
-    proj2::ThreadManager *tmgr = new proj2::ThreadManager();
-    proj2::ResourceManager *rmgr = new proj2::ResourceManager(tmgr, proj2::read_resource_budget(ifs));
+    proj2::ThreadManager tmgr;
+    proj2::ResourceManager rmgr(&tmgr, proj2::ResourceStatus(proj2::read_resource_budget(ifs)));
     std::vector<proj2::Instruction> instructions = proj2::read_instruction(ifs);
     ifs.close();
     proj2::AutoTimer timer("deadlock");
@@ -67,12 +67,12 @@ int main(int argc, char *argv[]) {
     // Run the instructions in parallel without deadlocks
     std::vector<std::thread *> pool;
     for (auto inst : instructions) {
-        pool.push_back(tmgr->new_thread(&proj2::run_instruction, rmgr, inst));
+        pool.push_back(tmgr.new_thread(&proj2::run_instruction, &rmgr, inst));
     }
 
     for (auto t : pool) {
         auto id = t->get_id();
-        if (tmgr->is_killed(id))
+        if (tmgr.is_killed(id))
             continue;
         t->join();
     }

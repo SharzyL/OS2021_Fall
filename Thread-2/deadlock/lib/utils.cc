@@ -10,7 +10,7 @@
 
 namespace proj2 {
 
-void a_slow_function(int seconds) { std::this_thread::sleep_for(std::chrono::seconds(seconds) / 100.0); }
+void a_slow_function(int seconds) { std::this_thread::sleep_for(std::chrono::seconds(seconds) / 1000.0); }
 
 int randint(int lower, int upper) { return rand() % (upper - lower + 1) + lower; }
 
