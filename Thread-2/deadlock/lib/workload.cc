@@ -1,7 +1,6 @@
 #include "workload.h"
 #include "resource_manager.h"
 #include "utils.h"
-#include <dbg.h>
 #include <map>
 #include <thread>
 #include <utility>
@@ -36,7 +35,6 @@ void workload(ResourceManager *mgr, RESOURCE rsc1, RESOURCE rsc2, int rsc1_amoun
     mgr->release(rsc1, rsc1_amount);
     mgr->release(rsc2, rsc2_amount);
     complete_num++;
-    dbg(complete_num);
 }
 
 } // namespace proj2
