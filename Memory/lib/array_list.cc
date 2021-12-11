@@ -3,14 +3,19 @@
 #include "memory_manager.h"
 
 namespace proj3 {
-    ArrayList::ArrayList(size_t sz, MemoryManager* cur_mma, int id){
+    ArrayList::ArrayList(size_t sz, MemoryManager* cur_mma, int id): array_id(id), mma(cur_mma), size(sz)
+    {
     }
+
     int ArrayList::Read (unsigned long idx){
-        //read the value in the virtual index of 'idx' from mma's memory space
+        size_t vid = idx / PageSize;
+        size_t offset = idx % PageSize;
+        mma->ReadPage(array_id, (int) vid, (int) offset);
     }
+
     void ArrayList::Write (unsigned long idx, int value){
-        //write 'value' in the virtual index of 'idx' into mma's memory space
-    }
-    ArrayList::~ArrayList(){
+        size_t vid = idx / PageSize;
+        size_t offset = idx % PageSize;
+        mma->WritePage(array_id, (int) vid, (int) offset, value);
     }
 } // namespce: proj3

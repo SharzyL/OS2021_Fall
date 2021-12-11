@@ -1,61 +1,147 @@
+#include <stdexcept>
+#include <fstream>
+#include <bitset>
+
 #include "memory_manager.h"
 
 #include "array_list.h"
 
 namespace proj3 {
-    PageFrame::PageFrame(){
+    PageFrame::PageFrame(int *mem) : mem(mem) {
     }
-    int& PageFrame::operator[] (unsigned long idx){
-        //each page should provide random access like an array
+
+    int &PageFrame::operator[](unsigned long idx) {
+        if (0 <= idx && idx < PageSize) {
+            return mem[idx];
+        } else {
+            throw std::out_of_range("accessing illegal memory");
+        }
     }
+
     void PageFrame::WriteDisk(const std::string &filename) {
-        // write page content into disk files
+        std::ofstream os(filename);
+        os.write(reinterpret_cast<char *>(mem), sizeof(mem));
     }
+
     void PageFrame::ReadDisk(const std::string &filename) {
-        // read page content from disk files
+        std::ifstream is(filename);
+        is.read(reinterpret_cast<char *>(mem), sizeof(mem));
     }
 
-    PageInfo::PageInfo(){
-    }
-    void PageInfo::SetInfo(int cur_holder, int cur_vid){
-        //modify the page states
-        //you can add extra parameters if needed
-    }
-    void PageInfo::ClearInfo(){
-        //clear the page states
-        //you can add extra parameters if needed
+    PageInfo::PageInfo(): holder(-1), virtual_page_id(-1)
+    {
     }
 
-    int PageInfo::GetHolder(){}
-    int PageInfo::GetVid(){}
-    
+    void PageInfo::SetInfo(int cur_holder, int cur_vid) {
+        holder = cur_holder;
+        virtual_page_id = cur_vid;
+    }
 
-    MemoryManager::MemoryManager(size_t sz){
-        //mma should build its memory space with given space size
-        //you should not allocate larger space than 'sz' (the number of physical pages) 
+    void PageInfo::ClearInfo() {
+        holder = -1;
+        virtual_page_id = -1;
     }
-    MemoryManager::~MemoryManager(){
+
+    int PageInfo::GetHolder() const { return holder; }
+
+    int PageInfo::GetVid() const { return virtual_page_id; }
+
+    MemoryManager::MemoryManager(size_t sz) : mma_sz(sz), underlying_mem(new int[sz * PageSize]), freelist(sz) {
+        phy_pages.reserve(sz);
+        page_info_list.reserve(sz);
+        for (int i = 0; i < sz; i++) {
+            phy_pages.emplace_back(underlying_mem + i * PageSize);
+            page_info_list.emplace_back();
+        }
     }
-    void MemoryManager::PageOut(int physical_page_id){
-        //swap out the physical page with the indx of 'physical_page_id out' into a disk file
+
+    MemoryManager::~MemoryManager() {
+        delete []underlying_mem;
     }
-    void MemoryManager::PageIn(int array_id, int virtual_page_id, int physical_page_id){
-        //swap the target page from the disk file into a physical page with the index of 'physical_page_id out'
+
+    void MemoryManager::PageOut(int physical_page_id) {
+        auto &page_info = page_info_list[physical_page_id];
+        page_table[page_info.GetHolder()][page_info.GetVid()] = -1;
+        phy_pages[physical_page_id].WriteDisk(build_page_file_name(page_info.GetHolder(), page_info.GetVid()));
+        // change of corresponding page_info is left to the caller
     }
-    void MemoryManager::PageReplace(int array_id, int virtual_page_id){
-        //implement your page replacement policy here
+
+    void MemoryManager::PageIn(int array_id, int virtual_page_id, int physical_page_id) {
+        phy_pages[physical_page_id].ReadDisk(build_page_file_name(array_id, virtual_page_id));
+        page_table[array_id][virtual_page_id] = physical_page_id;
+        page_info_list[physical_page_id].SetInfo(array_id, virtual_page_id);
     }
-    int MemoryManager::ReadPage(int array_id, int virtual_page_id, int offset){
-        // for arrayList of 'array_id', return the target value on its virtual space
+
+    int MemoryManager::ReadPage(int array_id, int virtual_page_id, int offset) {
+        int phy_page_id = page_table[array_id][virtual_page_id];
+        if (phy_page_id < 0) {
+            phy_page_id = find_page_to_evict();
+            PageOut(phy_page_id);
+            PageIn(array_id, virtual_page_id, phy_page_id);
+        }
+        return phy_pages[phy_page_id][offset];
     }
-    void MemoryManager::WritePage(int array_id, int virtual_page_id, int offset, int value){
-        // for arrayList of 'array_id', write 'value' into the target position on its virtual space
+
+    void MemoryManager::WritePage(int array_id, int virtual_page_id, int offset, int value) {
+        int phy_page_id = page_table[array_id][virtual_page_id];
+        if (phy_page_id < 0) {
+            phy_page_id = find_page_to_evict();
+            PageOut(phy_page_id);
+            PageIn(array_id, virtual_page_id, phy_page_id);
+        }
+        phy_pages[phy_page_id][offset] = value;
     }
-    ArrayList* MemoryManager::Allocate(size_t sz){
-        // when an application requires for memory, create an ArrayList and record mappings from its virtual memory space to the physical memory space
+
+    ArrayList *MemoryManager::Allocate(size_t sz) {
+        int arr_id = next_array_id;
+        next_array_id ++;
+        auto &cur_page_table = page_table[arr_id];
+        for (int i = 0; i < sz; i++) {
+            int next_phy_page = freelist.first_zero();
+            if (next_phy_page == -1) {  // not found
+                next_phy_page = find_page_to_evict();
+                PageOut(next_phy_page);
+            }
+            freelist.set(next_phy_page, true);
+            cur_page_table[i] = next_phy_page;
+            page_info_list[next_phy_page].SetInfo(arr_id, i);
+        }
     }
-    void MemoryManager::Release(ArrayList* arr){
-        // an application will call release() function when destroying its arrayList
-        // release the virtual space of the arrayList and erase the corresponding mappings
+
+    void MemoryManager::Release(ArrayList *arr) {
+        auto &cur_page_table = page_table[arr->array_id];
+        next_array_id ++;
+        for (auto [i, phy_page]: cur_page_table) {
+            freelist.set(phy_page, false);
+            cur_page_table[i] = phy_page;
+            page_info_list[phy_page].ClearInfo();
+        }
     }
+
+    int MemoryManager::find_page_to_evict() {
+        // TODO:
+        return 0;
+    }
+
+    std::string MemoryManager::build_page_file_name(int array_id, int vid) {
+        // TODO:
+        return "page";
+    }
+
+    FreeList::FreeList(size_t size) {
+        // TODO:
+    }
+
+    bool FreeList::get(size_t idx) {
+        // TODO:
+    }
+
+    void FreeList::set(size_t idx, bool val) {
+        // TODO:
+    }
+
+    int FreeList::first_zero() const {
+        // TODO:
+    }
+
 } // namespce: proj3

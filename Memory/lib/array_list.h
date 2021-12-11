@@ -3,19 +3,18 @@
 
 #include <cstdlib>
 
+#include "memory_manager.h"
+
 namespace proj3 {
 
-    class MemoryManager;
-
     class ArrayList{
-        private:
+    private:
         friend class MemoryManager;
         size_t size;
         MemoryManager* mma;
         int array_id;
         ArrayList(size_t, MemoryManager*, int);
-        ~ArrayList();
-        public:
+    public:
         // you should not modify the public interfaces used in tests
         int Read (unsigned long);
         void Write (unsigned long, int);

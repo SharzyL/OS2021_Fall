@@ -1,41 +1,51 @@
 #ifndef MEMORY_MANAGER_H_
 #define MEMORY_MANAGER_H_
 
-#include <cassert>
 #include <map>
+#include <vector>
 #include <string>
-#include <cstdlib>
-#include<cstdio>
+#include <bitset>
 
-#define PageSize 1024
+#include <cassert>
+#include <cstdlib>
+#include <cstdio>
+
+#include "array_list.h"
+
+constexpr size_t PageSize = 1024;
 
 namespace proj3 {
 
 class PageFrame {
 public:
-    PageFrame();
+    PageFrame(int *mem);
     int& operator[] (unsigned long);
     void WriteDisk(const std::string&);
     void ReadDisk(const std::string&);
 private:
-    int mem[PageSize];
+    int *mem;
 };
 
 class PageInfo {
 public:
     PageInfo();
-    void SetInfo(int,int);
+    void SetInfo(int, int);
     void ClearInfo();
-    int GetHolder();
-    int GetVid();
+    int GetHolder() const;
+    int GetVid() const;
 private:
     int holder; //page holder id (array_id)
     int virtual_page_id; // page virtual #
-    /*add your extra states here freely for implementation*/
-
 };
 
-class ArrayList;
+class FreeList {
+public:
+    FreeList(size_t size);
+    bool get(size_t idx);
+    void set(size_t idx, bool val);
+    int first_zero() const;
+private:
+};
 
 class MemoryManager {
 public:
@@ -46,18 +56,25 @@ public:
     ArrayList* Allocate(size_t);
     void Release(ArrayList*);
     ~MemoryManager();
-private:
-    std::map<int, std::map<int, int>> page_map; // // mapping from ArrayList's virtual page # to physical page #
-    PageFrame** mem; // physical pages, using 'PageFrame* mem' is also acceptable 
-    PageInfo* page_info; // physical page info
-    unsigned int* free_list;  // use bitmap implementation to identify and search for free pages
-    int next_array_id;
-    size_t mma_sz;
-    /*add your extra states here freely for implementation*/
 
-    void PageIn(int array_id, int virtual_page_id, int physical_page_id);
-    void PageOut(int physical_page_id);
-    void PageReplace(int array_id, int virtual_page_id);
+    MemoryManager(const MemoryManager&) = delete;
+    MemoryManager &operator=(const MemoryManager&) = delete;
+private:
+    size_t mma_sz;
+    int *underlying_mem;
+    std::vector<PageFrame> phy_pages;
+    std::vector<PageInfo> page_info_list;
+    std::map<int, std::map<int, int>> page_table;  // (array_list_id, virt_page_num) -> phy_page_num
+
+    int next_array_id = 0;
+
+    FreeList freelist;
+
+    int find_page_to_evict();
+
+    void PageIn(int array_id, int vid, int phy_id);
+    void PageOut(int phy_id);
+    std::string build_page_file_name(int array_id, int vid);
 };
 
 }  // namespce: proj3
