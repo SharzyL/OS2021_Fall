@@ -5,7 +5,7 @@
 #include <map>
 #include <string>
 #include <vector>
-
+#include <list>
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -15,6 +15,8 @@
 constexpr size_t PageSize = 1024;
 
 namespace proj3 {
+
+class ArrayList; // placeholder for cyclic dependency
 
 class PageFrame {
 public:
@@ -68,6 +70,7 @@ private:
     size_t mma_sz;
     int *underlying_mem;
     std::vector<PageFrame> phy_pages;
+    std::list<int> phy_page_queue;
     std::vector<PageInfo> page_info_list;
     std::map<int, std::map<int, int>> page_table; // (array_list_id, virt_page_num) -> phy_page_num
 

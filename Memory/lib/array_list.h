@@ -7,6 +7,8 @@
 
 namespace proj3 {
 
+class MemoryManager; // placeholder for cyclic dependency
+
 class ArrayList {
 private:
     friend class MemoryManager;

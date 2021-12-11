@@ -2,6 +2,7 @@
 #define DEADLOCK_LIB_UTILS_H_
 
 #include <chrono>
+#include <string>
 
 namespace proj3 {
 

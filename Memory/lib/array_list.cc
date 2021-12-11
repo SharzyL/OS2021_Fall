@@ -3,12 +3,12 @@
 #include "memory_manager.h"
 
 namespace proj3 {
-ArrayList::ArrayList(size_t sz, MemoryManager *cur_mma, int id) : array_id(id), mma(cur_mma), size(sz) {}
+ArrayList::ArrayList(size_t sz, MemoryManager *cur_mma, int id) : size(sz), mma(cur_mma), array_id(id) {}
 
 int ArrayList::Read(unsigned long idx) {
     size_t vid = idx / PageSize;
     size_t offset = idx % PageSize;
-    mma->ReadPage(array_id, (int)vid, (int)offset);
+    return mma->ReadPage(array_id, (int)vid, (int)offset);
 }
 
 void ArrayList::Write(unsigned long idx, int value) {
