@@ -123,20 +123,21 @@ std::string MemoryManager::build_page_file_name(int array_id, int vid) {
     return "page";
 }
 
-FreeList::FreeList(size_t size) {
-    // TODO:
-}
+FreeList::FreeList(size_t size): bitset(size) {}
 
 bool FreeList::get(size_t idx) {
-    // TODO:
+    return bitset[idx];
 }
 
 void FreeList::set(size_t idx, bool val) {
-    // TODO:
+    bitset[idx] = val;
 }
 
 int FreeList::first_zero() const {
-    // TODO:
+    for (int i = 0; i < bitset.size(); i++) {
+        if (!bitset[i]) return i;
+    }
+    return -1;
 }
 
 } // namespace proj3

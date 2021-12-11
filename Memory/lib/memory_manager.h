@@ -48,6 +48,7 @@ public:
     int first_zero() const;
 
 private:
+    std::vector<bool> bitset;
 };
 
 class MemoryManager {
