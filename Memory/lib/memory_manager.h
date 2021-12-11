@@ -1,7 +1,7 @@
 #ifndef MEMORY_MANAGER_H_
 #define MEMORY_MANAGER_H_
 
-#include <assert.h>
+#include <cassert>
 #include <map>
 #include <string>
 #include <cstdlib>
@@ -15,8 +15,8 @@ class PageFrame {
 public:
     PageFrame();
     int& operator[] (unsigned long);
-    void WriteDisk(std::string);
-    void ReadDisk(std::string);
+    void WriteDisk(const std::string&);
+    void ReadDisk(const std::string&);
 private:
     int mem[PageSize];
 };
@@ -40,7 +40,7 @@ class ArrayList;
 class MemoryManager {
 public:
     // you should not modify the public interfaces used in tests
-    MemoryManager(size_t);
+    explicit MemoryManager(size_t);
     int ReadPage(int array_id, int virtual_page_id, int offset);
     void WritePage(int array_id, int virtual_page_id, int offset, int value);
     ArrayList* Allocate(size_t);

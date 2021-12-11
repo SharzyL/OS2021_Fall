@@ -8,10 +8,10 @@ namespace proj3 {
     int& PageFrame::operator[] (unsigned long idx){
         //each page should provide random access like an array
     }
-    void PageFrame::WriteDisk(std::string filename) {
+    void PageFrame::WriteDisk(const std::string &filename) {
         // write page content into disk files
     }
-    void PageFrame::ReadDisk(std::string filename) {
+    void PageFrame::ReadDisk(const std::string &filename) {
         // read page content from disk files
     }
 
