@@ -4,15 +4,14 @@ cc_test(
     name = "mma_test",
     size = "small",
     srcs = ["mma_test.cc"],
-    deps = [
-        "@gtest//:gtest_main",
-        "//lib:utils_lib",
-        "//lib:memory_manager_lib",
-        ],
-    copts = [
-        "-std=c++11",
-    ],
     linkopts = [
         "-pthread",
-    ]
+    ],
+    deps = [
+        "//lib:memory_manager_lib",
+        "//lib:utils_lib",
+        "@com_github_google_glog//:glog",
+        "@fmt",
+        "@gtest//:gtest_main",
+    ],
 )

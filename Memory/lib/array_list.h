@@ -15,7 +15,7 @@ private:
     size_t size;
     MemoryManager *mma;
     int array_id;
-    ArrayList(size_t, MemoryManager *, int);
+    ArrayList(size_t sz, MemoryManager * mma, int id);
 
 public:
     // you should not modify the public interfaces used in tests

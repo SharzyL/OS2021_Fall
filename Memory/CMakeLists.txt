@@ -24,7 +24,9 @@ add_executable(mma_test
         lib/utils.h
         mma_test.cc)
 
-target_link_libraries(mma_test Threads::Threads gtest_main)
+find_package(fmt)
+find_package(glog)
+target_link_libraries(mma_test Threads::Threads gtest_main fmt glog::glog)
 
 include(GoogleTest)
 gtest_discover_tests(mma_test)

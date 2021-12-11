@@ -12,7 +12,7 @@
 
 #include "array_list.h"
 
-constexpr size_t PageSize = 1024;
+constexpr int PageSize = 1024;
 
 namespace proj3 {
 
@@ -24,6 +24,7 @@ public:
     int &operator[](unsigned long);
     void WriteDisk(const std::string &);
     void ReadDisk(const std::string &);
+    void Clear();
 
 private:
     int *mem;
@@ -50,13 +51,14 @@ public:
     int first_zero() const;
 
 private:
+    int cnt;
     std::vector<bool> bitset;
 };
 
 class MemoryManager {
 public:
     // you should not modify the public interfaces used in tests
-    explicit MemoryManager(size_t);
+    explicit MemoryManager(int);
     int ReadPage(int array_id, int virtual_page_id, int offset);
     void WritePage(int array_id, int virtual_page_id, int offset, int value);
     ArrayList *Allocate(size_t);
@@ -67,21 +69,26 @@ public:
     MemoryManager &operator=(const MemoryManager &) = delete;
 
 private:
-    size_t mma_sz;
+    int mma_sz;
+
     int *underlying_mem;
     std::vector<PageFrame> phy_pages;
-    std::list<int> phy_page_queue;
     std::vector<PageInfo> page_info_list;
     std::map<int, std::map<int, int>> page_table; // (array_list_id, virt_page_num) -> phy_page_num
+    std::map<int, ArrayList> array_list_map;
 
     int next_array_id = 0;
 
     FreeList freelist;
 
+    std::list<int> phy_page_queue;
     int find_page_to_evict();
 
     void PageIn(int array_id, int vid, int phy_id);
     void PageOut(int phy_id);
+    int AllocateOnePage(int arr_id, int vid);  // return phy id of new allocated page
+    int LoadPage(int arr_id, int vid);  // return phy id of loaded page
+
     std::string build_page_file_name(int array_id, int vid);
 };
 
