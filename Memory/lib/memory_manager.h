@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <queue>
 #include <list>
 #include <cassert>
 #include <cstdio>
@@ -44,16 +45,13 @@ private:
     int virtual_page_id; // page virtual #
 };
 
-class FreeList {
+class AllocMgr {
 public:
-    FreeList(size_t size);
-    bool get(size_t idx);
-    void set(size_t idx, bool val);
-    int first_zero() const;
-
+    AllocMgr();
+    void free(int idx);
+    int alloc();
 private:
-    int cnt;
-    std::vector<bool> bitset;
+    std::queue<int> free_queue{};
 };
 
 class MemoryManager {
@@ -70,17 +68,19 @@ public:
     MemoryManager &operator=(const MemoryManager &) = delete;
 
 private:
+    enum PageTableVal { PAGE_ON_DISK = -1, PAGE_UNALLOCATED = -2 };
+
     int mma_sz;
     std::mutex info_updating;
     int *underlying_mem;
     std::vector<PageFrame> phy_pages;
     std::vector<PageInfo> page_info_list;
-    std::map<int, std::map<int, int>> page_table; // (array_list_id, virt_page_num) -> phy_page_num
+    std::map<int, std::vector<int>> page_table; // (array_list_id, virt_page_num) -> phy_page_num
     std::map<int, ArrayList> array_list_map;
 
     int next_array_id = 0;
 
-    FreeList freelist;
+    AllocMgr free_phy_pages;
 
     std::list<int> phy_page_queue;
     std::vector<int> phy_page_clock;

@@ -108,6 +108,27 @@ TEST_F(MMATest, task3) {
     }
 }
 
+TEST(Prof, task_profile) {
+    const int phy_pages = 1000;
+    const int app_num = 100;
+    const int page_per_app = 50;
+    const int iter_num = 100000;
+
+    auto mma = new proj3::MemoryManager(phy_pages);
+    std::vector<proj3::ArrayList *> appList;
+    appList.reserve(app_num);
+    for (int i = 0; i < 100; i++) {
+        appList.emplace_back(mma->Allocate(page_per_app * PageSize));
+    }
+    for (int i = 0; i < iter_num; i++) {
+        if (std::rand() % 2) {
+            appList[std::rand() % app_num]->Read(std::rand() % (PageSize * page_per_app));
+        } else {
+            appList[std::rand() % app_num]->Write(std::rand() % (PageSize * page_per_app), 114514);
+        }
+    }
+}
+
 void workload(proj3::MemoryManager *my_mma, size_t workload_sz) {
     proj3::ArrayList *arr = my_mma->Allocate(workload_sz);
     for (unsigned long j = 0; j < workload_sz; j++)
