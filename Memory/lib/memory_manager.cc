@@ -11,6 +11,7 @@
 #include "array_list.h"
 
 namespace proj3 {
+int alg = 1;
 PageFrame::PageFrame(int *mem) : mem(mem) {}
 
 int &PageFrame::operator[](unsigned long idx) {
@@ -49,10 +50,16 @@ int PageInfo::GetVid() const { return virtual_page_id; }
 
 MemoryManager::MemoryManager(int sz) : mma_sz(sz), underlying_mem(new int[sz * PageSize]), freelist(sz) {
     phy_pages.reserve(sz);
+    if (alg == 1) {
+        phy_page_clock.reserve(sz);
+    }
     page_info_list.reserve(sz);
     for (size_t i = 0; i < sz; i++) {
         phy_pages.emplace_back(underlying_mem + i * PageSize);
         page_info_list.emplace_back();
+        if (alg == 1) {
+            phy_page_clock.emplace_back(0);
+        }
     }
 }
 
@@ -96,18 +103,28 @@ int MemoryManager::LoadPage(int arr_id, int vid) {
     int phy_page;
     if (phy_page_ptr == cur_page_table.end()) {  // if corresponding page not allocated
         phy_page = AllocateOnePage(arr_id, vid);
+        if (alg == 1) {
+            phy_page_clock[phy_page] = 0;
+        }
     } else {
         phy_page = phy_page_ptr->second;
         if (phy_page < 0) {  // if the page is swapped out
-            phy_page = find_page_to_evict();
-            PageOut(phy_page);
-            phy_page_queue.remove(phy_page);
+            phy_page = freelist.first_zero();
+            if (phy_page < 0) {  // if memory is full
+                phy_page = find_page_to_evict();
+                PageOut(phy_page);
+            }
             PageIn(arr_id, vid, phy_page);
+        } else {  // page is in memory
+            if (alg == 1) {
+                phy_page_clock[phy_page] = 1;
+            }
         }
-        // else page is in memory
     }
     LOG(INFO) << fmt::format("resolve [{}, {}] = {}", arr_id, vid, phy_page);
-    phy_page_queue.push_front(phy_page);
+    if (alg == 0) {
+        phy_page_queue.push_front(phy_page);
+    }
     return phy_page;
 }
 
@@ -143,7 +160,11 @@ void MemoryManager::Release(ArrayList *arr) {
         if (phy_page >= 0) {
             freelist.set(phy_page, false);
             page_info_list[phy_page].ClearInfo();
-            phy_page_queue.remove(phy_page);
+            if (alg == 0) {
+                phy_page_queue.remove(phy_page);
+            } else {
+                phy_page_clock[phy_page] = 0;
+            }
         } else {
             // TODO: clean swap file
         }
@@ -152,9 +173,26 @@ void MemoryManager::Release(ArrayList *arr) {
 }
 
 int MemoryManager::find_page_to_evict() {
-    int first_in_page = phy_page_queue.back();
-    phy_page_queue.pop_back();
-    return first_in_page;
+    if (alg == 0) {
+        int first_in_page = phy_page_queue.back();
+        phy_page_queue.pop_back();
+        return first_in_page;
+    } else if (alg == 1) {
+        while (true) {
+            if (phy_page_clock[pointer_clock] == 0){
+                pointer_clock = (pointer_clock + 1) % this->mma_sz;
+                if (pointer_clock >= 1) {
+                    return pointer_clock - 1;
+                } else {
+                    return this->mma_sz - 1;
+                }
+            } else {
+                phy_page_clock[pointer_clock] = 0;
+                pointer_clock = (pointer_clock + 1) % this->mma_sz;
+            }
+        }
+    }
+    assert(false);
 }
 
 std::string MemoryManager::build_page_file_name(int array_id, int vid) {

@@ -8,6 +8,7 @@
 #include <list>
 #include <cassert>
 #include <cstdio>
+#include <mutex>
 #include <cstdlib>
 
 #include "array_list.h"
@@ -70,7 +71,7 @@ public:
 
 private:
     int mma_sz;
-
+    std::mutex info_updating;
     int *underlying_mem;
     std::vector<PageFrame> phy_pages;
     std::vector<PageInfo> page_info_list;
@@ -82,6 +83,8 @@ private:
     FreeList freelist;
 
     std::list<int> phy_page_queue;
+    std::vector<int> phy_page_clock;
+    int pointer_clock = 0;
     int find_page_to_evict();
 
     void PageIn(int array_id, int vid, int phy_id);

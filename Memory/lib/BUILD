@@ -23,6 +23,10 @@ cc_library(
         "memory_manager.h",
         "array_list.h",
         ],
+    deps = [
+        "@com_github_google_glog//:glog",
+        "@fmt",
+    ],
 	visibility = [
 		"//visibility:public",
 	],
