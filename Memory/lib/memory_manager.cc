@@ -1,5 +1,4 @@
 #include <fstream>
-#include <stdexcept>
 #include <string>
 
 #include <fmt/core.h>
@@ -53,10 +52,10 @@ MemoryManager::MemoryManager(int size) : mma_sz(size), underlying_mem(new int[si
     } else {
         evict_mgr = std::unique_ptr<EvictMgr>(new ClockEvictMgr(size));
     }
-    page_info_list.reserve(size);
+    phy_pages_info.reserve(size);
     for (int i = 0; i < size; i++) {
         phy_pages.emplace_back(underlying_mem + i * PageSize);
-        page_info_list.emplace_back();
+        phy_pages_info.emplace_back();
         free_page_mgr.Free(i);
     }
 }
@@ -64,7 +63,7 @@ MemoryManager::MemoryManager(int size) : mma_sz(size), underlying_mem(new int[si
 MemoryManager::~MemoryManager() { delete[] underlying_mem; }
 
 void MemoryManager::page_out(int phy_page) {
-    auto &page_info = page_info_list[phy_page];
+    auto &page_info = phy_pages_info[phy_page];
     page_table[page_info.GetHolder()][page_info.GetVid()] = -1;
     phy_pages[phy_page].WriteDisk(build_page_file_name(page_info.GetHolder(), page_info.GetVid()));
 
@@ -74,7 +73,7 @@ void MemoryManager::page_out(int phy_page) {
 void MemoryManager::page_in(int arr_id, int vid, int phy_page) {
     phy_pages[phy_page].ReadDisk(build_page_file_name(arr_id, vid));
     page_table[arr_id][vid] = phy_page;
-    page_info_list[phy_page].SetInfo(arr_id, vid);
+    phy_pages_info[phy_page].SetInfo(arr_id, vid);
 
     LOG(INFO) << fmt::format("page in [{}, {}] on {}", arr_id, vid, phy_page);
 }
@@ -87,7 +86,7 @@ int MemoryManager::allocate_one_page(int arr_id, int vid) {
     }
     phy_pages[phy_page].Clear(); // because weird TA request the memory to be initialized
     page_table[arr_id][vid] = phy_page;
-    page_info_list[phy_page].SetInfo(arr_id, vid);
+    phy_pages_info[phy_page].SetInfo(arr_id, vid);
     evict_mgr->Load(phy_page);
 
     LOG(INFO) << fmt::format("allocate page {} for [{}, {}]", phy_page, arr_id, vid);
@@ -137,15 +136,12 @@ void MemoryManager::WritePage(int array_id, int virtual_page_id, int offset, int
 
 ArrayList *MemoryManager::Allocate(int sz) {
     int pages_needed = ((int)sz + PageSize - 1) / PageSize;
-    if (pages_needed > mma_sz) {
-        throw std::runtime_error("not enough mem to allocate");
-    }
     int arr_id = next_array_id;
     LOG(INFO) << fmt::format("request {} bytes for app {}", sz, arr_id);
     next_array_id++;
     auto &new_page_table = page_table[arr_id]; // init an empty page table
-    new_page_table.reserve(sz);
-    for (int i = 0; i < sz; i++) {
+    new_page_table.reserve(pages_needed);
+    for (int i = 0; i < pages_needed; i++) {
         new_page_table.emplace_back(PAGE_UNALLOCATED);
     }
     array_list_map.emplace(std::make_pair(arr_id, ArrayList{sz, this, arr_id}));
@@ -159,7 +155,7 @@ void MemoryManager::Release(ArrayList *arr) {
         if (phy_page >= 0) {
             free_page_mgr.Free(phy_page);
             evict_mgr->Free(phy_page);
-            page_info_list[phy_page].ClearInfo();
+            phy_pages_info[phy_page].ClearInfo();
         } else if (phy_page == PAGE_ON_DISK) {
             // TODO: clean swap file
         }
@@ -168,7 +164,7 @@ void MemoryManager::Release(ArrayList *arr) {
 }
 
 std::string MemoryManager::build_page_file_name(int array_id, int vid) {
-    std::string name = "/tmp/page_" + std::to_string(array_id) + "_" + std::to_string(vid);
+    std::string name = "my_pages_" + std::to_string(array_id) + "_" + std::to_string(vid);
     return name;
 }
 

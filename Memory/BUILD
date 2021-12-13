@@ -15,3 +15,18 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_binary(
+    name = "mma_benchmark",
+    srcs = ["mma_benchmark.cc"],
+    linkopts = [
+        "-pthread",
+    ],
+    deps = [
+        "//lib:memory_manager_lib",
+        "//lib:utils_lib",
+        "@com_github_google_glog//:glog",
+        "@fmt",
+        "@gbench//:benchmark",
+    ],
+)

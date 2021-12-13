@@ -77,7 +77,7 @@ private:
 
     int *underlying_mem;
     std::vector<PageFrame> phy_pages;
-    std::vector<PageInfo> page_info_list;
+    std::vector<PageInfo> phy_pages_info;
     std::map<int, std::vector<int>> page_table; // (array_list_id, virt_page_num) -> phy_page_num
     std::map<int, ArrayList> array_list_map;
 

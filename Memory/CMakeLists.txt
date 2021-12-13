@@ -17,16 +17,21 @@ enable_testing()
 
 add_executable(mma_test
         lib/array_list.cc
-        lib/array_list.h
         lib/memory_manager.cc
-        lib/memory_manager.h
         lib/utils.cc
-        lib/utils.h
         mma_test.cc)
+
+add_executable(mma_benchmark
+        lib/array_list.cc
+        lib/memory_manager.cc
+        lib/utils.cc
+        mma_benchmark.cc)
 
 find_package(fmt)
 find_package(glog)
+
 target_link_libraries(mma_test Threads::Threads gtest_main fmt glog::glog)
+target_link_libraries(mma_benchmark Threads::Threads benchmark fmt glog::glog)
 
 include(GoogleTest)
 gtest_discover_tests(mma_test)
