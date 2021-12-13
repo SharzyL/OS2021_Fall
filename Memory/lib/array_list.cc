@@ -3,7 +3,7 @@
 #include "memory_manager.h"
 
 namespace proj3 {
-ArrayList::ArrayList(size_t sz, MemoryManager *cur_mma, int id) : size(sz), mma(cur_mma), array_id(id) {}
+ArrayList::ArrayList(int sz, MemoryManager *cur_mma, int id) : size(sz), mma(cur_mma), array_id(id) {}
 
 int ArrayList::Read(unsigned long idx) {
     size_t vid = idx / PageSize;

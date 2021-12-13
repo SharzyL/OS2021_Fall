@@ -12,10 +12,10 @@ class MemoryManager; // placeholder for cyclic dependency
 class ArrayList {
 private:
     friend class MemoryManager;
-    size_t size;
+    int size;
     MemoryManager *mma;
     int array_id;
-    ArrayList(size_t sz, MemoryManager * mma, int id);
+    ArrayList(int sz, MemoryManager *mma, int id);
 
 public:
     // you should not modify the public interfaces used in tests

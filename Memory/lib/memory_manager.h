@@ -2,17 +2,19 @@
 #define MEMORY_MANAGER_H_
 
 #include <bitset>
-#include <map>
-#include <string>
-#include <vector>
-#include <queue>
-#include <list>
 #include <cassert>
 #include <cstdio>
-#include <mutex>
 #include <cstdlib>
+#include <list>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <queue>
+#include <string>
+#include <vector>
 
 #include "array_list.h"
+#include "evict_mgr.h"
 
 constexpr int PageSize = 1024;
 
@@ -48,8 +50,9 @@ private:
 class AllocMgr {
 public:
     AllocMgr();
-    void free(int idx);
-    int alloc();
+    void Free(int idx);
+    int Alloc();
+
 private:
     std::queue<int> free_queue{};
 };
@@ -60,18 +63,18 @@ public:
     explicit MemoryManager(int);
     int ReadPage(int array_id, int virtual_page_id, int offset);
     void WritePage(int array_id, int virtual_page_id, int offset, int value);
-    ArrayList *Allocate(size_t);
+    ArrayList *Allocate(int size);
     void Release(ArrayList *);
-    ~MemoryManager();
-
     MemoryManager(const MemoryManager &) = delete;
     MemoryManager &operator=(const MemoryManager &) = delete;
+
+    ~MemoryManager();
 
 private:
     enum PageTableVal { PAGE_ON_DISK = -1, PAGE_UNALLOCATED = -2 };
 
     int mma_sz;
-    std::mutex info_updating;
+
     int *underlying_mem;
     std::vector<PageFrame> phy_pages;
     std::vector<PageInfo> page_info_list;
@@ -80,17 +83,16 @@ private:
 
     int next_array_id = 0;
 
-    AllocMgr free_phy_pages;
+    AllocMgr free_page_mgr;
 
-    std::list<int> phy_page_queue;
-    std::vector<int> phy_page_clock;
-    int pointer_clock = 0;
-    int find_page_to_evict();
+    std::unique_ptr<EvictMgr> evict_mgr;
 
-    void PageIn(int array_id, int vid, int phy_id);
-    void PageOut(int phy_id);
-    int AllocateOnePage(int arr_id, int vid);  // return phy id of new allocated page
-    int LoadPage(int arr_id, int vid);  // return phy id of loaded page
+    void page_in(int array_id, int vid, int phy_id);
+    void page_out(int phy_id);
+
+    int allocate_one_page(int arr_id, int vid); // return phy id of new allocated page
+    int replace_one_page(int arr_id, int vid);  // return phy id of new allocated page
+    int locate_page(int arr_id, int vid);       // return phy id of loaded page
 
     std::string build_page_file_name(int array_id, int vid);
 };

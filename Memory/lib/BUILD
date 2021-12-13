@@ -4,32 +4,31 @@ cc_library(
     name = "utils_lib",
     srcs = [
         "utils.cc",
-        ],
+    ],
     hdrs = [
         "utils.h",
-        ],
-	visibility = [
-		"//visibility:public",
-	],
+    ],
+    visibility = [
+        "//visibility:public",
+    ],
 )
 
 cc_library(
     name = "memory_manager_lib",
     srcs = [
-        "memory_manager.cc",
         "array_list.cc",
-        ],
+        "memory_manager.cc",
+    ],
     hdrs = [
-        "memory_manager.h",
         "array_list.h",
-        ],
+        "evict_mgr.h",
+        "memory_manager.h",
+    ],
+    visibility = [
+        "//visibility:public",
+    ],
     deps = [
         "@com_github_google_glog//:glog",
         "@fmt",
     ],
-	visibility = [
-		"//visibility:public",
-	],
 )
-
-
