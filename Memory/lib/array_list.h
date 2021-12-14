@@ -15,10 +15,10 @@ private:
     int size;
     MemoryManager *mma;
     int array_id;
-    ArrayList(int sz, MemoryManager *mma, int id);
 
 public:
     // you should not modify the public interfaces used in tests
+    ArrayList(int sz, MemoryManager *mma, int id);
     int Read(unsigned long);
     void Write(unsigned long, int);
 };

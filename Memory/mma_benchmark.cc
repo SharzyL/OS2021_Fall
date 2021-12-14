@@ -2,9 +2,9 @@
 // Created by sharzy on 12/13/21.
 //
 
+#include <fstream>
 #include <random>
 #include <thread>
-#include <fstream>
 
 #include <benchmark/benchmark.h>
 #include <glog/logging.h>
@@ -12,9 +12,7 @@
 #include "lib/array_list.h"
 #include "lib/memory_manager.h"
 
-int rand_int() {
-    return std::rand();
-}
+int rand_int() { return std::rand(); }
 
 static void BM_random(benchmark::State &state) {
     for (auto _ : state) {
@@ -41,20 +39,28 @@ static void BM_random(benchmark::State &state) {
     }
 }
 
-static void BM_disk_multi(benchmark::State &state) {
+static void BM_disk_concur(benchmark::State &state) {
     for (auto _ : state) {
-        int num_files = (int) state.range(0);
-        char *src = new char[4096];
+        state.PauseTiming();
+        size_t num_files = state.range(0);
+        size_t num_bytes = state.range(1);
+
+        char *src = new char[num_bytes];
+        for (size_t i = 0; i < num_bytes; i++) {
+            src[i] = (char)(1 + rand_int() % 255);
+        }
         std::vector<std::thread> workers;
         workers.reserve(num_files);
-        for (int i = 0; i < num_files; i++) {
+        state.ResumeTiming();
+        for (size_t i = 0; i < num_files; i++) {
             workers.emplace_back([=] {
                 std::string filename = "file_" + std::to_string(i);
                 std::ofstream of(filename);
-                of.write(src, 4096);
+                of.write(src, (long)num_bytes);
+                std::flush(of);
             });
         }
-        for (auto &th: workers) {
+        for (auto &th : workers) {
             th.join();
         }
     }
@@ -62,20 +68,28 @@ static void BM_disk_multi(benchmark::State &state) {
 
 static void BM_disk(benchmark::State &state) {
     for (auto _ : state) {
-        int num_files = (int) state.range(0);
-        char *src = new char[4096];
-        for (int i = 0; i < num_files; i++) {
+        state.PauseTiming();
+        size_t num_files = state.range(0);
+        size_t num_bytes = state.range(1);
+        char *src = new char[num_bytes];
+        for (size_t i = 0; i < num_bytes; i++) {
+            src[i] = (char)(1 + rand_int() % 255);
+        }
+        state.ResumeTiming();
+        for (size_t i = 0; i < num_files; i++) {
             std::string filename = "file_" + std::to_string(i);
             std::ofstream of(filename);
-            of.write(src, 4096);
+            of.write(src, (long)num_bytes);
+            std::flush(of);
         }
+        delete[] src;
     }
 }
 
 BENCHMARK(BM_random);
 
-BENCHMARK(BM_disk_multi)->Arg(1000);
-BENCHMARK(BM_disk)->Arg(1000);
+BENCHMARK(BM_disk_concur)->Args({100, 1 << 12})->Args({100, 1 << 16});
+BENCHMARK(BM_disk)->Args({100, 1 << 12})->Args({100, 1 << 16});
 
 int main(int argc, char **argv) {
     google::InitGoogleLogging(argv[0]);

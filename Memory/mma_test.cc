@@ -5,6 +5,8 @@
 #include "lib/array_list.h"
 #include "lib/memory_manager.h"
 
+#include "glog/logging.h"
+
 namespace proj3 {
 namespace testing {
 
@@ -67,7 +69,7 @@ TEST_F(MMATest, task2) {
             mma->Release(arr[i]);
         else
             for (unsigned long j = 0; j < workload_sz_2; j++)
-                EXPECT_EQ(i, arr[i]->Read(j));
+                ASSERT_EQ(i, arr[i]->Read(j));
     }
     for (int i = 0; i < loop_times; i++) {
         if (i % 2 == 0)
@@ -97,7 +99,7 @@ TEST_F(MMATest, task3) {
 
     for (int i = 0; i < metrix_length; i++) {
         for (int j = 0; j < metrix_length; j++) {
-            EXPECT_EQ(metrix[i][j], metrixC[i]->Read(j));
+            ASSERT_EQ(metrix[i][j], metrixC[i]->Read(j));
         }
     }
 
@@ -108,33 +110,12 @@ TEST_F(MMATest, task3) {
     }
 }
 
-TEST(Prof, task_profile) {
-    const int phy_pages = 1000;
-    const int app_num = 100;
-    const int page_per_app = 50;
-    const int iter_num = 100000;
-
-    auto mma = new proj3::MemoryManager(phy_pages);
-    std::vector<proj3::ArrayList *> appList;
-    appList.reserve(app_num);
-    for (int i = 0; i < 100; i++) {
-        appList.emplace_back(mma->Allocate(page_per_app * PageSize));
-    }
-    for (int i = 0; i < iter_num; i++) {
-        if (std::rand() % 2) {
-            appList[std::rand() % app_num]->Read(std::rand() % (PageSize * page_per_app));
-        } else {
-            appList[std::rand() % app_num]->Write(std::rand() % (PageSize * page_per_app), 114514);
-        }
-    }
-}
-
 void workload(proj3::MemoryManager *my_mma, size_t workload_sz) {
     proj3::ArrayList *arr = my_mma->Allocate(workload_sz);
     for (unsigned long j = 0; j < workload_sz; j++)
         arr->Write(j, j);
     for (unsigned long j = 0; j < workload_sz; j++)
-        EXPECT_EQ(j, arr->Read(j));
+        ASSERT_EQ(j, arr->Read(j));
     my_mma->Release(arr);
 }
 
@@ -153,6 +134,7 @@ TEST_F(MMATest, task4) {
 } // namespace proj3
 
 int main(int argc, char **argv) {
+    google::InitGoogleLogging("MMA_test");
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

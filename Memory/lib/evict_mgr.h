@@ -5,9 +5,29 @@
 #ifndef MEMORY_EVICT_MGR_H
 #define MEMORY_EVICT_MGR_H
 
-#include <fmt/core.h>
-#include <fmt/ranges.h>
-#include <glog/logging.h>
+#include <queue>
+#include <list>
+#include <vector>
+
+class AllocMgr {
+public:
+    AllocMgr() = default;
+    void Free(int idx) {
+        free_queue.push(idx);
+    };
+    int Alloc() {
+        if (free_queue.empty()) {
+            return -1;
+        } else {
+            int front = free_queue.front();
+            free_queue.pop();
+            return front;
+        }
+    }
+
+private:
+    std::queue<int> free_queue{};
+};
 
 class EvictMgr {
 public:
