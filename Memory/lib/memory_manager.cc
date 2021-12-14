@@ -24,6 +24,8 @@ void PageFrame::WriteDisk(const std::string &filename) {
 void PageFrame::ReadDisk(const std::string &filename) {
     std::ifstream is(filename);
     is.read(reinterpret_cast<char *>(mem), PageSize * sizeof(int));
+    assert(std::filesystem::exists(filename));
+    std::filesystem::remove(filename);
 }
 
 void PageFrame::Clear() { std::memset(mem, 0, PageSize * sizeof(int)); }
@@ -44,14 +46,15 @@ int PageInfo::GetHolder() const { return holder; }
 
 int PageInfo::GetVid() const { return virtual_page_id; }
 
-MemoryManager::MemoryManager(int size) : mma_sz(size), underlying_mem(new int[size * PageSize]) {
+MemoryManager::MemoryManager(int size, EvictAlg alg) : mma_sz(size), underlying_mem(new int[size * PageSize]) {
     phy_pages.reserve(size);
 
-    char *evict_alg_str = std::getenv("EVICT_ALG");
-    if (evict_alg_str != nullptr && std::string(evict_alg_str) == "FIFO") {
+    if (alg == EVICT_CLOCK_ALG) {
+        evict_mgr = std::unique_ptr<EvictMgr>(new ClockEvictMgr(size));
+    } else if (alg == EVICT_FIFO_ALG) {
         evict_mgr = std::unique_ptr<EvictMgr>(new FifoEvictMgr(size));
     } else {
-        evict_mgr = std::unique_ptr<EvictMgr>(new ClockEvictMgr(size));
+        assert(false);
     }
     phy_pages_info.reserve(size);
     for (int i = 0; i < size; i++) {
@@ -73,9 +76,9 @@ void MemoryManager::page_out(int phy_page, ulock &lk) {
 
     page_table[ori_arr_id][ori_vid] = PAGE_ON_DISK;
 
-//    lock_page(ori_arr_id, ori_vid, phy_page, lk);
+    lock_page(ori_arr_id, ori_vid, phy_page, lk);
     phy_pages[phy_page].WriteDisk(build_page_file_name(ori_arr_id, ori_vid));
-//    unlock_page(ori_arr_id, ori_vid, phy_page, lk);
+    unlock_page(ori_arr_id, ori_vid, phy_page, lk);
 
     LOG(INFO) << fmt::format("page out [{}, {}] on {}", page_info.GetHolder(), page_info.GetVid(), phy_page);
 }
@@ -83,9 +86,9 @@ void MemoryManager::page_out(int phy_page, ulock &lk) {
 void MemoryManager::page_in(int arr_id, int vid, int phy_page, ulock &lk) {
     page_table[arr_id][vid] = phy_page;
     phy_pages_info[phy_page].SetInfo(arr_id, vid);
-//    lock_page(arr_id, vid, phy_page, lk);
+    lock_page(arr_id, vid, phy_page, lk);
     phy_pages[phy_page].ReadDisk(build_page_file_name(arr_id, vid));
-//    unlock_page(arr_id, vid, phy_page, lk);
+    unlock_page(arr_id, vid, phy_page, lk);
 
     LOG(INFO) << fmt::format("page in [{}, {}] on {}", arr_id, vid, phy_page);
 }
@@ -186,12 +189,11 @@ void MemoryManager::Release(ArrayList *arr) {
 }
 
 std::string MemoryManager::build_page_file_name(int array_id, int vid) {
-    std::string name = "my_pages_" + std::to_string(array_id) + "_" + std::to_string(vid);
+    std::string name = "2019012343_pages_" + std::to_string(array_id) + "_" + std::to_string(vid);
     return name;
 }
 
 void MemoryManager::lock_page(int arr_id, int vid, int phy_page, MemoryManager::ulock &lk) {
-    page_table[arr_id][vid] = PAGE_ON_DISK;
     op_cv.wait(lk, [=] {
         return pending_phy_pages.count(phy_page) == 0 &&
                pending_virt_pages.count({arr_id, vid}) == 0;

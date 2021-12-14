@@ -18,7 +18,7 @@
 #include "array_list.h"
 #include "evict_mgr.h"
 
-constexpr int PageSize = 1024;
+constexpr int PageSize = 4096;
 
 namespace proj3 {
 
@@ -52,7 +52,8 @@ private:
 class MemoryManager {
 public:
     // you should not modify the public interfaces used in tests
-    explicit MemoryManager(int);
+    enum EvictAlg { EVICT_CLOCK_ALG, EVICT_FIFO_ALG };
+    MemoryManager(int, EvictAlg alg = EVICT_FIFO_ALG);
     int ReadPage(int arr_id, int vid, int offset);
     void WritePage(int arr_id, int vid, int offset, int value);
     ArrayList *Allocate(int size);

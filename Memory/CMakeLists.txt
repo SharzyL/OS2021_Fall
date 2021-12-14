@@ -22,6 +22,12 @@ add_executable(mma_test
         lib/utils.cc
         mma_test.cc)
 
+add_executable(mma_benchmark_extra
+        lib/array_list.cc
+        lib/memory_manager.cc
+        lib/utils.cc
+        mma_benchmark_extra.cc)
+
 add_executable(mma_benchmark
         lib/array_list.cc
         lib/memory_manager.cc
@@ -30,9 +36,11 @@ add_executable(mma_benchmark
 
 find_package(fmt)
 find_package(glog)
+find_package(benchmark)
 
 target_link_libraries(mma_test Threads::Threads gtest_main fmt glog::glog)
 target_link_libraries(mma_benchmark Threads::Threads benchmark fmt glog::glog)
+target_link_libraries(mma_benchmark_extra Threads::Threads benchmark fmt glog::glog)
 
 include(GoogleTest)
 gtest_discover_tests(mma_test)

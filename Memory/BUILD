@@ -30,3 +30,18 @@ cc_binary(
         "@gbench//:benchmark",
     ],
 )
+
+cc_binary(
+    name = "mma_benchmark_extra",
+    srcs = ["mma_benchmark_extra.cc"],
+    linkopts = [
+        "-pthread",
+    ],
+    deps = [
+        "//lib:memory_manager_lib",
+        "//lib:utils_lib",
+        "@com_github_google_glog//:glog",
+        "@fmt",
+        "@gbench//:benchmark",
+    ],
+)
