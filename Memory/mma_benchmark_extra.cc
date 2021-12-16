@@ -17,10 +17,10 @@ int rand_int() { return std::rand(); }
 class MMATest : public benchmark::Fixture {
 protected:
     void Init(benchmark::State &state) {
-        phy_pages = (int) state.range(0);
-        app_num = (int) state.range(1);
-        page_per_app = (int) state.range(2);
-        iter_num = (int) state.range(3);
+        phy_pages = (int)state.range(0);
+        app_num = (int)state.range(1);
+        page_per_app = (int)state.range(2);
+        iter_num = (int)state.range(3);
 
         mma = new proj3::MemoryManager(phy_pages);
         app_list.reserve(app_num);
@@ -41,8 +41,8 @@ protected:
 
 void PostRun(benchmark::State &state, const proj3::MemoryManager &mma) {
     LOG(ERROR) << mma.stat_num_miss;
-    state.counters["access"] = (double) mma.stat_num_access;
-    state.counters["miss"] = (double) mma.stat_num_miss;
+    state.counters["access"] = (double)mma.stat_num_access;
+    state.counters["miss"] = (double)mma.stat_num_miss;
 }
 
 BENCHMARK_DEFINE_F(MMATest, random_single_thread)(benchmark::State &state) {
@@ -94,7 +94,7 @@ BENCHMARK_DEFINE_F(MMATest, random_multi_thread)(benchmark::State &state) {
                 }
             });
         }
-        for (auto &job: jobs) {
+        for (auto &job : jobs) {
             job.join();
         }
         PostRun(state, *mma);
@@ -102,37 +102,44 @@ BENCHMARK_DEFINE_F(MMATest, random_multi_thread)(benchmark::State &state) {
     }
 }
 
-BENCHMARK_REGISTER_F(MMATest, random_single_thread)
-    ->Args({1000, 40, 30, 1000})
-    ->Args({1000, 40, 60, 1000});
-BENCHMARK_REGISTER_F(MMATest, random_single_thread_in_order)
-    ->Args({1000, 40, 30, 1000})
-    ->Args({1000, 40, 60, 1000});
-BENCHMARK_REGISTER_F(MMATest, random_multi_thread)->UseRealTime()
+BENCHMARK_REGISTER_F(MMATest, random_single_thread)->Args({1000, 40, 30, 1000})->Args({1000, 40, 60, 1000});
+BENCHMARK_REGISTER_F(MMATest, random_single_thread_in_order)->Args({1000, 40, 30, 1000})->Args({1000, 40, 60, 1000});
+BENCHMARK_REGISTER_F(MMATest, random_multi_thread)
+    ->UseRealTime()
     ->Args({1000, 40, 30, 1000})
     ->Args({1000, 40, 60, 1000});
 
-void mmul_workload(proj3::MemoryManager * my_mma, size_t A, size_t B, size_t C){
-    proj3::ArrayList* arr = my_mma->Allocate(A * B + B * C + A * C);
+void mmul_workload(proj3::MemoryManager *my_mma, size_t A, size_t B, size_t C) {
+    proj3::ArrayList *arr = my_mma->Allocate(A * B + B * C + A * C);
     const int b0 = 0, b1 = A * B, b2 = A * B + B * C;
     const int r0 = A, r1 = B;
     const int c0 = B, c1 = C, c2 = C;
-    for (int i = 0; i < r0; ++i) for (int j = 0; j < c0; ++j) arr->Write(b0 + i * c0 + j, rand() % 10);
-    for (int i = 0; i < r1; ++i) for (int j = 0; j < c1; ++j) arr->Write(b1 + i * c1 + j, rand() % 10);
-//    for (int i = 0; i < r2; ++i) for (int j = 0; j < c2; ++j) arr->Write(b2 + i * c2 + j, i * j);
-    for (int i = 0; i < r0; ++i) for (int j = 0; j < c0; ++j) for (int k = 0; k < c1; ++k) {
-                arr->Write(b2 + i * c2 + k, arr->Read(b2 + i * c2 + k) + arr->Read(b0 + i * c0 + j) * arr->Read(b1 + j * c1 + k));
+    for (int i = 0; i < r0; ++i)
+        for (int j = 0; j < c0; ++j)
+            arr->Write(b0 + i * c0 + j, rand() % 10);
+    for (int i = 0; i < r1; ++i)
+        for (int j = 0; j < c1; ++j)
+            arr->Write(b1 + i * c1 + j, rand() % 10);
+    //    for (int i = 0; i < r2; ++i) for (int j = 0; j < c2; ++j) arr->Write(b2 + i * c2 + j, i * j);
+    for (int i = 0; i < r0; ++i)
+        for (int j = 0; j < c0; ++j)
+            for (int k = 0; k < c1; ++k) {
+                arr->Write(b2 + i * c2 + k,
+                           arr->Read(b2 + i * c2 + k) + arr->Read(b0 + i * c0 + j) * arr->Read(b1 + j * c1 + k));
             }
-    for (int j = 0; j < c0; ++j) for (int i = 0; i < r0; ++i) for (int k = 0; k < c1; ++k) {
-                arr->Write(b2 + i * c2 + k, arr->Read(b2 + i * c2 + k) - arr->Read(b0 + i * c0 + j) * arr->Read(b1 + j * c1 + k));
+    for (int j = 0; j < c0; ++j)
+        for (int i = 0; i < r0; ++i)
+            for (int k = 0; k < c1; ++k) {
+                arr->Write(b2 + i * c2 + k,
+                           arr->Read(b2 + i * c2 + k) - arr->Read(b0 + i * c0 + j) * arr->Read(b1 + j * c1 + k));
             }
-//    for (int i = 0; i < r0; ++i) for (int k = 0; k < c1; ++k) {
-//            assert(i * k == arr->Read(b2 + i * c2 + k));
-//        }
+    //    for (int i = 0; i < r0; ++i) for (int k = 0; k < c1; ++k) {
+    //            assert(i * k == arr->Read(b2 + i * c2 + k));
+    //        }
 }
 
 BENCHMARK_DEFINE_F(MMATest, mmul)(benchmark::State &state) {
-    for (auto _: state) {
+    for (auto _ : state) {
         mma = new proj3::MemoryManager(5, proj3::MemoryManager::EVICT_FIFO_ALG);
         int wkA = 50, wkB = 100, wkC = 50;
         mmul_workload(mma, wkA, wkB, wkC);
@@ -189,7 +196,6 @@ static void BM_disk(benchmark::State &state) {
         delete[] src;
     }
 }
-
 
 BENCHMARK(BM_disk_concur)->Args({100, 1 << 12})->Args({100, 1 << 16});
 BENCHMARK(BM_disk)->Args({100, 1 << 12})->Args({100, 1 << 16});

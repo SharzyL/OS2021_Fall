@@ -5,8 +5,8 @@
 #include "lib/array_list.h"
 #include "lib/memory_manager.h"
 
-#include <glog/logging.h>
 #include <fmt/core.h>
+#include <glog/logging.h>
 
 namespace proj3 {
 namespace testing {

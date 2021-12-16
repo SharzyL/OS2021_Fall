@@ -5,19 +5,17 @@
 #ifndef MEMORY_EVICT_MGR_H
 #define MEMORY_EVICT_MGR_H
 
-#include <queue>
 #include <list>
+#include <queue>
 #include <vector>
 
-#include <glog/logging.h>
 #include <fmt/core.h>
+#include <glog/logging.h>
 
 class AllocMgr {
 public:
     AllocMgr() = default;
-    void Free(int idx) {
-        free_queue.push(idx);
-    };
+    void Free(int idx) { free_queue.push(idx); };
     int Alloc() {
         if (free_queue.empty()) {
             return -1;
@@ -27,6 +25,7 @@ public:
             return front;
         }
     }
+    virtual ~AllocMgr() = default;
 
 private:
     std::queue<int> free_queue{};
@@ -45,9 +44,7 @@ public:
 class FifoEvictMgr : public EvictMgr {
 public:
     explicit FifoEvictMgr(int size) : EvictMgr(size) {}
-    void Load(int idx) override {
-        access_queue.push_back(idx);
-    }
+    void Load(int idx) override { access_queue.push_back(idx); }
     void Access(int idx) override {}
     int Evict() override {
         int front = access_queue.front();
@@ -55,9 +52,7 @@ public:
         access_queue.pop_front();
         return front;
     }
-    void Free(int idx) override {
-        access_queue.remove(idx);
-    }
+    void Free(int idx) override { access_queue.remove(idx); }
 
 private:
     std::list<int> access_queue;

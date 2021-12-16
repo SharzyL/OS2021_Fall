@@ -77,7 +77,6 @@ private:
     std::vector<PageFrame> phy_pages;
     std::vector<PageInfo> phy_pages_info;
     std::map<int, std::vector<int>> page_table; // (array_list_id, virt_page_num) -> phy_page_num
-    std::vector<ArrayList*> all_array_lists;    // why return a pointer?
 
     int next_array_id = 0;
 
@@ -102,7 +101,6 @@ private:
 
     void lock_page(int arr_id, int vid, int phy_page, ulock &lk);
     void unlock_page(int arr_id, int vid, int phy_page, ulock &lk);
-
 };
 
 } // namespace proj3

@@ -64,10 +64,7 @@ MemoryManager::MemoryManager(int size, EvictAlg alg) : mma_sz(size), underlying_
     }
 }
 
-MemoryManager::~MemoryManager() {
-    delete[] underlying_mem;
-    for (auto array_list_ptr: all_array_lists) delete array_list_ptr;
-}
+MemoryManager::~MemoryManager() { delete[] underlying_mem; }
 
 void MemoryManager::page_out(int phy_page, ulock &lk) {
     auto &page_info = phy_pages_info[phy_page];
@@ -138,7 +135,7 @@ int MemoryManager::locate_page(int arr_id, int vid, ulock &lk) {
 }
 
 int MemoryManager::ReadPage(int arr_id, int vid, int offset) {
-    assert(page_table.find(arr_id) != page_table.end() && vid < (int) page_table[arr_id].size());
+    assert(page_table.find(arr_id) != page_table.end() && vid < (int)page_table[arr_id].size());
 
     ulock lk(op_mtx);
     stat_num_access++;
@@ -149,7 +146,7 @@ int MemoryManager::ReadPage(int arr_id, int vid, int offset) {
 }
 
 void MemoryManager::WritePage(int arr_id, int vid, int offset, int value) {
-    assert(page_table.find(arr_id) != page_table.end() && vid < (int) page_table[arr_id].size());
+    assert(page_table.find(arr_id) != page_table.end() && vid < (int)page_table[arr_id].size());
 
     ulock lk(op_mtx);
     stat_num_access++;
@@ -169,7 +166,7 @@ ArrayList *MemoryManager::Allocate(int sz) {
     for (int i = 0; i < pages_needed; i++) {
         new_page_table.emplace_back(PAGE_UNALLOCATED);
     }
-    return all_array_lists.emplace_back(new ArrayList(sz, this, arr_id));
+    return new ArrayList(sz, this, arr_id);
 }
 
 void MemoryManager::Release(ArrayList *arr) {
@@ -177,7 +174,7 @@ void MemoryManager::Release(ArrayList *arr) {
     assert(page_table.count(arr->array_id) > 0);
     auto &page_table_dir = page_table[arr->array_id];
     LOG(INFO) << fmt::format("release mem for app {}", arr->array_id);
-    for (int vid = 0; vid < (int) page_table_dir.size(); vid++) {
+    for (int vid = 0; vid < (int)page_table_dir.size(); vid++) {
         int phy_page = page_table_dir[vid];
         if (phy_page >= 0) {
             free_page_mgr.Free(phy_page);
@@ -190,6 +187,7 @@ void MemoryManager::Release(ArrayList *arr) {
         }
     }
     page_table.erase(arr->array_id);
+    delete arr;
 }
 
 std::string MemoryManager::build_page_file_name(int array_id, int vid) {
@@ -199,8 +197,7 @@ std::string MemoryManager::build_page_file_name(int array_id, int vid) {
 
 void MemoryManager::lock_page(int arr_id, int vid, int phy_page, MemoryManager::ulock &lk) {
     op_cv.wait(lk, [=] {
-        return pending_phy_pages.count(phy_page) == 0 &&
-               pending_virt_pages.count({arr_id, vid}) == 0;
+        return pending_phy_pages.count(phy_page) == 0 && pending_virt_pages.count({arr_id, vid}) == 0;
     });
     ulock pending_lk(pending_set_mtx);
     pending_phy_pages.emplace(phy_page);

@@ -1,6 +1,6 @@
+#include <stdlib.h>
 #include <thread>
 #include <vector>
-#include <stdlib.h>
 
 #include <benchmark/benchmark.h>
 
@@ -36,16 +36,16 @@ protected:
     };
 
     void PostRun(benchmark::State &state, const proj3::MemoryManager &mma) {
-        state.counters["miss"] = (double) mma.stat_num_miss;
-        state.counters["access"] = (double) mma.stat_num_access;
-        state.counters["miss_rate"] = (double) mma.stat_num_miss / (double) mma.stat_num_access;
+        state.counters["miss"] = (double)mma.stat_num_miss;
+        state.counters["access"] = (double)mma.stat_num_access;
+        state.counters["miss_rate"] = (double)mma.stat_num_miss / (double)mma.stat_num_access;
     }
 };
 
 BENCHMARK_DEFINE_F(MMATest, task1_fifo)(benchmark::State &state) {
-    for (auto _: state) {
+    for (auto _ : state) {
         proj3::MemoryManager mma(num_pages, MemoryManager::EVICT_FIFO_ALG);
-        proj3::ArrayList *arr = mma.Allocate((int) workload_sz_1);
+        proj3::ArrayList *arr = mma.Allocate((int)workload_sz_1);
         for (unsigned long i = 0; i < workload_sz_1; i++) {
             arr->Write(i, 1);
         }
@@ -58,9 +58,9 @@ BENCHMARK_DEFINE_F(MMATest, task1_fifo)(benchmark::State &state) {
 }
 
 BENCHMARK_DEFINE_F(MMATest, task1_clock)(benchmark::State &state) {
-    for (auto _: state) {
+    for (auto _ : state) {
         proj3::MemoryManager mma(num_pages, MemoryManager::EVICT_CLOCK_ALG);
-        proj3::ArrayList *arr = mma.Allocate((int) workload_sz_1);
+        proj3::ArrayList *arr = mma.Allocate((int)workload_sz_1);
         for (unsigned long i = 0; i < workload_sz_1; i++) {
             arr->Write(i, 1);
         }
@@ -73,7 +73,7 @@ BENCHMARK_DEFINE_F(MMATest, task1_clock)(benchmark::State &state) {
 }
 
 BENCHMARK_DEFINE_F(MMATest, task2_fifo)(benchmark::State &state) {
-    for (auto _: state) {
+    for (auto _ : state) {
         proj3::MemoryManager mma(num_pages, MemoryManager::EVICT_FIFO_ALG);
         std::vector<proj3::ArrayList *> arr;
         for (int i = 0; i < loop_times; i++) {
@@ -97,7 +97,7 @@ BENCHMARK_DEFINE_F(MMATest, task2_fifo)(benchmark::State &state) {
 }
 
 BENCHMARK_DEFINE_F(MMATest, task2_clock)(benchmark::State &state) {
-    for (auto _: state) {
+    for (auto _ : state) {
         proj3::MemoryManager mma(num_pages, MemoryManager::EVICT_CLOCK_ALG);
         std::vector<proj3::ArrayList *> arr;
         for (int i = 0; i < loop_times; i++) {
@@ -121,8 +121,8 @@ BENCHMARK_DEFINE_F(MMATest, task2_clock)(benchmark::State &state) {
 }
 
 BENCHMARK_DEFINE_F(MMATest, task2_var_page_num)(benchmark::State &state) {
-    for (auto _: state) {
-        num_pages = (int) state.range(0);
+    for (auto _ : state) {
+        num_pages = (int)state.range(0);
         proj3::MemoryManager mma(num_pages, MemoryManager::EVICT_CLOCK_ALG);
         std::vector<proj3::ArrayList *> arr;
         for (int i = 0; i < loop_times; i++) {
@@ -146,7 +146,7 @@ BENCHMARK_DEFINE_F(MMATest, task2_var_page_num)(benchmark::State &state) {
 }
 
 BENCHMARK_DEFINE_F(MMATest, task3_fifo)(benchmark::State &state) {
-    for (auto _: state) {
+    for (auto _ : state) {
         proj3::MemoryManager mma(num_pages, MemoryManager::EVICT_FIFO_ALG);
         std::vector<proj3::ArrayList *> metrixA, metrixB, metrixC;
         for (int i = 0; i < metrix_length; i++) {
@@ -180,7 +180,7 @@ BENCHMARK_DEFINE_F(MMATest, task3_fifo)(benchmark::State &state) {
 }
 
 BENCHMARK_DEFINE_F(MMATest, task3_clock)(benchmark::State &state) {
-    for (auto _: state) {
+    for (auto _ : state) {
         proj3::MemoryManager mma(num_pages, MemoryManager::EVICT_CLOCK_ALG);
         std::vector<proj3::ArrayList *> metrixA, metrixB, metrixC;
         for (int i = 0; i < metrix_length; i++) {
@@ -214,17 +214,17 @@ BENCHMARK_DEFINE_F(MMATest, task3_clock)(benchmark::State &state) {
 }
 
 BENCHMARK_DEFINE_F(MMATest, task4)(benchmark::State &state) {
-    for (auto _: state) {
-        thread_num = (int) state.range(0);
+    for (auto _ : state) {
+        thread_num = (int)state.range(0);
         proj3::MemoryManager mma(num_pages, MemoryManager::EVICT_CLOCK_ALG);
         std::vector<std::thread> pool;
         pool.reserve(thread_num);
         for (int i = 0; i < thread_num; i++) {
             pool.emplace_back([=, &mma] {
-                proj3::ArrayList *arr = mma.Allocate((int) workload_sz_4);
-                for (int j = 0; j < (int) workload_sz_4; j++)
+                proj3::ArrayList *arr = mma.Allocate((int)workload_sz_4);
+                for (int j = 0; j < (int)workload_sz_4; j++)
                     arr->Write(j, j);
-                for (int j = 0; j < (int) workload_sz_4; j++)
+                for (int j = 0; j < (int)workload_sz_4; j++)
                     arr->Read(j);
                 mma.Release(arr);
             });
@@ -257,8 +257,7 @@ BENCHMARK_REGISTER_F(MMATest, task2_var_page_num)
     ->Arg(7)
     ->Arg(8)
     ->Arg(9)
-    ->Arg(10)
-;
+    ->Arg(10);
 
 // q4
 BENCHMARK_REGISTER_F(MMATest, task4)
@@ -272,10 +271,9 @@ BENCHMARK_REGISTER_F(MMATest, task4)
     ->Arg(17)
     ->Arg(18)
     ->Arg(19)
-    ->Arg(20)
-;
+    ->Arg(20);
 
-} // namespace proj3
+} // namespace proj3::testing
 
 int main(int argc, char **argv) {
     google::InitGoogleLogging(argv[0]);
