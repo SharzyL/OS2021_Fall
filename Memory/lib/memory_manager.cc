@@ -86,6 +86,7 @@ void MemoryManager::page_out(int phy_page, ulock &lk) {
 void MemoryManager::page_in(int arr_id, int vid, int phy_page, ulock &lk) {
     page_table[arr_id][vid] = phy_page;
     phy_pages_info[phy_page].SetInfo(arr_id, vid);
+    stat_num_miss++;
     lock_page(arr_id, vid, phy_page, lk);
     phy_pages[phy_page].ReadDisk(build_page_file_name(arr_id, vid));
     unlock_page(arr_id, vid, phy_page, lk);
@@ -140,6 +141,7 @@ int MemoryManager::ReadPage(int arr_id, int vid, int offset) {
     assert(page_table.find(arr_id) != page_table.end() && vid < (int) page_table[arr_id].size());
 
     ulock lk(op_mtx);
+    stat_num_access++;
     int phy_page = locate_page(arr_id, vid, lk);
     int val = phy_pages[phy_page][offset];
     LOG(INFO) << fmt::format("read [{}, {}][{}] = {}", arr_id, vid, offset, val);
@@ -150,6 +152,7 @@ void MemoryManager::WritePage(int arr_id, int vid, int offset, int value) {
     assert(page_table.find(arr_id) != page_table.end() && vid < (int) page_table[arr_id].size());
 
     ulock lk(op_mtx);
+    stat_num_access++;
     int phy_page = locate_page(arr_id, vid, lk);
     LOG(INFO) << fmt::format("write [{}, {}][{}] = {}", arr_id, vid, offset, value);
     phy_pages[phy_page][offset] = value;
@@ -173,6 +176,7 @@ void MemoryManager::Release(ArrayList *arr) {
     ulock lk(op_mtx);
     assert(page_table.count(arr->array_id) > 0);
     auto &page_table_dir = page_table[arr->array_id];
+    LOG(INFO) << fmt::format("release mem for app {}", arr->array_id);
     for (int vid = 0; vid < (int) page_table_dir.size(); vid++) {
         int phy_page = page_table_dir[vid];
         if (phy_page >= 0) {

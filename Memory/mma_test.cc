@@ -5,7 +5,8 @@
 #include "lib/array_list.h"
 #include "lib/memory_manager.h"
 
-#include "glog/logging.h"
+#include <glog/logging.h>
+#include <fmt/core.h>
 
 namespace proj3 {
 namespace testing {
@@ -128,6 +129,7 @@ TEST_F(MMATest, task4) {
     for (auto t : pool) {
         t->join();
     }
+    LOG(WARNING) << fmt::format("access {}, miss {}", mma->stat_num_access, mma->stat_num_miss);
 }
 
 } // namespace testing

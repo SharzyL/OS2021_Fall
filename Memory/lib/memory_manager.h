@@ -18,7 +18,7 @@
 #include "array_list.h"
 #include "evict_mgr.h"
 
-constexpr int PageSize = 4096;
+constexpr int PageSize = 1024;
 
 namespace proj3 {
 
@@ -53,7 +53,7 @@ class MemoryManager {
 public:
     // you should not modify the public interfaces used in tests
     enum EvictAlg { EVICT_CLOCK_ALG, EVICT_FIFO_ALG };
-    MemoryManager(int, EvictAlg alg = EVICT_FIFO_ALG);
+    MemoryManager(int, EvictAlg alg = EVICT_CLOCK_ALG);
     int ReadPage(int arr_id, int vid, int offset);
     void WritePage(int arr_id, int vid, int offset, int value);
     ArrayList *Allocate(int size);
@@ -62,6 +62,9 @@ public:
     MemoryManager &operator=(const MemoryManager &) = delete;
 
     ~MemoryManager();
+
+    long long stat_num_access = 0;
+    long long stat_num_miss = 0;
 
 private:
     using ulock = std::unique_lock<std::mutex>;
@@ -99,6 +102,7 @@ private:
 
     void lock_page(int arr_id, int vid, int phy_page, ulock &lk);
     void unlock_page(int arr_id, int vid, int phy_page, ulock &lk);
+
 };
 
 } // namespace proj3

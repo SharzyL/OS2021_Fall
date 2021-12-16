@@ -34,6 +34,12 @@ protected:
         {38850, 39695, 40540, 41385, 42230, 43075, 43920, 44765, 45610, 46455},
         {43350, 44295, 45240, 46185, 47130, 48075, 49020, 49965, 50910, 51855},
     };
+
+    void PostRun(benchmark::State &state, const proj3::MemoryManager &mma) {
+        state.counters["miss"] = (double) mma.stat_num_miss;
+        state.counters["access"] = (double) mma.stat_num_access;
+        state.counters["miss_rate"] = (double) mma.stat_num_miss / (double) mma.stat_num_access;
+    }
 };
 
 BENCHMARK_DEFINE_F(MMATest, task1_fifo)(benchmark::State &state) {
@@ -47,12 +53,13 @@ BENCHMARK_DEFINE_F(MMATest, task1_fifo)(benchmark::State &state) {
             arr->Read(i);
         }
         mma.Release(arr);
+        PostRun(state, mma);
     }
 }
 
 BENCHMARK_DEFINE_F(MMATest, task1_clock)(benchmark::State &state) {
     for (auto _: state) {
-        proj3::MemoryManager mma(num_pages);
+        proj3::MemoryManager mma(num_pages, MemoryManager::EVICT_CLOCK_ALG);
         proj3::ArrayList *arr = mma.Allocate((int) workload_sz_1);
         for (unsigned long i = 0; i < workload_sz_1; i++) {
             arr->Write(i, 1);
@@ -61,6 +68,7 @@ BENCHMARK_DEFINE_F(MMATest, task1_clock)(benchmark::State &state) {
             arr->Read(i);
         }
         mma.Release(arr);
+        PostRun(state, mma);
     }
 }
 
@@ -84,6 +92,7 @@ BENCHMARK_DEFINE_F(MMATest, task2_fifo)(benchmark::State &state) {
             if (i % 2 == 0)
                 mma.Release(arr[i]);
         }
+        PostRun(state, mma);
     }
 }
 
@@ -107,6 +116,7 @@ BENCHMARK_DEFINE_F(MMATest, task2_clock)(benchmark::State &state) {
             if (i % 2 == 0)
                 mma.Release(arr[i]);
         }
+        PostRun(state, mma);
     }
 }
 
@@ -131,6 +141,7 @@ BENCHMARK_DEFINE_F(MMATest, task2_var_page_num)(benchmark::State &state) {
             if (i % 2 == 0)
                 mma.Release(arr[i]);
         }
+        PostRun(state, mma);
     }
 }
 
@@ -164,12 +175,13 @@ BENCHMARK_DEFINE_F(MMATest, task3_fifo)(benchmark::State &state) {
             mma.Release(metrixB[i]);
             mma.Release(metrixC[i]);
         }
+        PostRun(state, mma);
     }
 }
 
 BENCHMARK_DEFINE_F(MMATest, task3_clock)(benchmark::State &state) {
     for (auto _: state) {
-        proj3::MemoryManager mma(num_pages, MemoryManager::EVICT_FIFO_ALG);
+        proj3::MemoryManager mma(num_pages, MemoryManager::EVICT_CLOCK_ALG);
         std::vector<proj3::ArrayList *> metrixA, metrixB, metrixC;
         for (int i = 0; i < metrix_length; i++) {
             metrixA.push_back(mma.Allocate(metrix_length));
@@ -197,6 +209,7 @@ BENCHMARK_DEFINE_F(MMATest, task3_clock)(benchmark::State &state) {
             mma.Release(metrixB[i]);
             mma.Release(metrixC[i]);
         }
+        PostRun(state, mma);
     }
 }
 
@@ -219,6 +232,7 @@ BENCHMARK_DEFINE_F(MMATest, task4)(benchmark::State &state) {
         for (auto &t : pool) {
             t.join();
         }
+        PostRun(state, mma);
     }
 }
 
