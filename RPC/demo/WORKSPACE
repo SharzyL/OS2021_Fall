@@ -31,6 +31,7 @@ rules_proto_toolchains()
 ### gRPC Rules for Bazel
 http_archive(
     name = "com_github_grpc_grpc",
+    sha256 = "3db6da6500312cf011ecea4231cdb75ba1dd40440a10c9f807cee805448fc82b",
     urls = [
         "https://github.com.cnpmjs.org/grpc/grpc/archive/11f00485aa5ad422cfe2d9d90589158f46954101.tar.gz",
     ],

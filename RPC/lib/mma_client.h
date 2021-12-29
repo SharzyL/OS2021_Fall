@@ -12,11 +12,20 @@
 #include "mma.grpc.pb.h"
 #endif
 
+#include "array_list.h"
+
 namespace proj4 {
 
 class ArrayList;
 
-class MmaClient {};
+class MmaClient {
+public:
+    explicit MmaClient(std::shared_ptr<grpc::Channel> channel);
+    int ReadPage(int arr_id, int vid, int offset);
+    void WritePage(int arr_id, int vid, int offset, int value);
+    ArrayList *Allocate(int size);
+    void Free(ArrayList *);
+};
 
 } // namespace proj4
 
