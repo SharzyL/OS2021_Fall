@@ -1,0 +1,4 @@
+build --cxxopt='-std=c++17'
+build --cxxopt='-fdiagnostics-color=always'
+build --cxxopt='-Werror'
+build --cxxopt='-Wall'

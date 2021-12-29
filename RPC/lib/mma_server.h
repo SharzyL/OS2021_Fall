@@ -1,13 +1,13 @@
 #ifndef MMA_SERVER_H
 #define MMA_SERVER_H
 
+#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <string>
-#include <cstdlib>
 
-#include <grpc++/grpc++.h>
 #include <grpc++/ext/proto_server_reflection_plugin.h>
+#include <grpc++/grpc++.h>
 #include <grpc++/health_check_service_interface.h>
 
 #ifdef BAZEL_BUILD
@@ -17,7 +17,6 @@
 #endif
 
 #include "memory_manager.h"
-
 
 // Logic and data behind the server's behavior.
 
@@ -32,6 +31,6 @@ void RunServerL(size_t phy_page_num, size_t max_vir_page_num);
 // shutdown the server setup by RunServerUL or RunServerL
 void ShutdownServer();
 
-} //namespace proj4
+} // namespace proj4
 
 #endif

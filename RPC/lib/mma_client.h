@@ -1,8 +1,8 @@
 #ifndef MMA_CLIENT_H
 #define MMA_CLIENT_H
 
-#include <memory>
 #include <cstdlib>
+#include <memory>
 
 #include <grpc++/grpc++.h>
 
@@ -12,14 +12,12 @@
 #include "mma.grpc.pb.h"
 #endif
 
-
 namespace proj4 {
 
 class ArrayList;
 
-class MmaClient {
-};
+class MmaClient {};
 
-} //namespace proj4
+} // namespace proj4
 
 #endif
