@@ -25,6 +25,8 @@ public:
     void WritePage(int arr_id, int vid, int offset, int value);
     ArrayList *Allocate(int size);
     void Free(ArrayList *);
+private:
+    std::unique_ptr<MMA::Stub> stub_;
 };
 
 } // namespace proj4

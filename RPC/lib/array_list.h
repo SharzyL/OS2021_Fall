@@ -13,9 +13,9 @@ private:
 
     int size;
     MmaClient *mma;
+public:
     int array_id;
 
-public:
     // you should not modify the public interfaces used in tests
     ArrayList(MmaClient *mma, int size, int id);
 

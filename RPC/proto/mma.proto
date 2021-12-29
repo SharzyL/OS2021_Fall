@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option objc_class_prefix = "MMA";
 
-package mma;
+package proj4;
 
 // The greeting service definition.
 service MMA {
@@ -10,7 +10,7 @@ service MMA {
   rpc ReadPage (ReadPageRequest) returns (ReadPageResponse) {}
   rpc WritePage (WritePageRequest) returns (WritePageResponse) {}
   rpc Allocate (AllocateRequest) returns (AllocateResponse) {}
-  rpc Release (ReleaseRequest) returns (ReleaseResponse) {}
+  rpc Free (FreeRequest) returns (FreeResponse) {}
 }
 
 // The request message containing the user's name.
@@ -33,7 +33,6 @@ message WritePageRequest {
 }
 
 message WritePageResponse {
-  bool ok = 1;
 }
 
 message AllocateRequest {
@@ -41,14 +40,12 @@ message AllocateRequest {
 }
 
 message AllocateResponse {
-  bool ok = 1;
   int32 arr_id = 2;
 }
 
-message ReleaseRequest {
+message FreeRequest {
   int32 arr_id = 1;
 }
 
-message ReleaseResponse {
-  bool ok = 1;
+message FreeResponse {
 }
